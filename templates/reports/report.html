@@ -1,0 +1,277 @@
+{% load report_tags %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Business Intelligence Report – {{ meta.location_name }}</title>
+<style>
+  /* Fonts are bundled in report_generator/fonts (SIL OFL). "Report Fallback" (DejaVu Sans)
+     supplies symbols the brand fonts lack, e.g. ☐ and →; DM Mono has no ₹, so DM Sans covers it. */
+  @font-face { font-family: "Fraunces"; src: url("{{ fonts.display_regular }}"); font-weight: 400; font-style: normal; }
+  @font-face { font-family: "Fraunces"; src: url("{{ fonts.display }}"); font-weight: 600; font-style: normal; }
+  @font-face { font-family: "Fraunces"; src: url("{{ fonts.display_italic }}"); font-weight: 400; font-style: italic; }
+  @font-face { font-family: "Fraunces"; src: url("{{ fonts.display_bold_italic }}"); font-weight: 600; font-style: italic; }
+  @font-face { font-family: "DM Sans"; src: url("{{ fonts.body }}"); font-weight: 400; font-style: normal; }
+  @font-face { font-family: "DM Sans"; src: url("{{ fonts.body_italic }}"); font-weight: 400; font-style: italic; }
+  @font-face { font-family: "DM Sans"; src: url("{{ fonts.body_bold }}"); font-weight: 700; font-style: normal; }
+  @font-face { font-family: "DM Mono"; src: url("{{ fonts.mono }}"); font-weight: 400; font-style: normal; }
+  @font-face { font-family: "DM Mono"; src: url("{{ fonts.mono_medium }}"); font-weight: 500; font-style: normal; }
+  @font-face { font-family: "Report Fallback"; src: url("{{ fonts.fallback }}"); font-weight: 400; }
+  @font-face { font-family: "Report Fallback"; src: url("{{ fonts.fallback_bold }}"); font-weight: 700; }
+
+  /* ---------------------------------------------------------------------------
+     Editorial design system. Palette (keep in sync with report_generator/theme.py):
+       ivory #F4EFE6 · paper #FBF8F2 · royal #2443D6 · navy #0E1A3B · charcoal #1F1F23
+       muted #6E6758 · hairline #D8CFBE
+     Page types: ivory (default), navy (.pg-navy, cover), royal blue (.pg-royal).
+     Type: Fraunces = headings & italic statements, DM Sans = body, DM Mono = labels/metadata.
+     --------------------------------------------------------------------------- */
+  @page {
+    size: A4;
+    margin: 24mm 18mm 22mm 18mm;
+    background: #F4EFE6;
+    @top-left { content: "Business Intelligence Report · " string(locname); font: 6.6pt "DM Mono", "DM Sans", "Report Fallback"; letter-spacing: 0.08em; text-transform: uppercase; color: #6E6758; vertical-align: bottom; padding-bottom: 4mm; }
+    @top-right { content: string(section); font: 6.6pt "DM Mono", "DM Sans", "Report Fallback"; letter-spacing: 0.08em; text-transform: uppercase; color: #2443D6; vertical-align: bottom; padding-bottom: 4mm; }
+    @bottom-left { content: "Generated {{ meta.generated_at_local }} · Estimates, not guarantees"; font: 6.4pt "DM Mono", "DM Sans", "Report Fallback"; color: #6E6758; vertical-align: top; padding-top: 5mm; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 6.6pt "DM Mono", "DM Sans", "Report Fallback"; letter-spacing: 0.06em; color: #1F1F23; vertical-align: top; padding-top: 5mm; }
+  }
+  @page navy { background: #0E1A3B;
+    @top-left { color: #9AA6C8; } @top-right { color: #F4EFE6; } @bottom-left { color: #9AA6C8; } @bottom-right { color: #F4EFE6; } }
+  @page royal { background: #2443D6;
+    @top-left { color: #C9D2F6; } @top-right { color: #F4EFE6; } @bottom-left { color: #C9D2F6; } @bottom-right { color: #F4EFE6; } }
+  @page cover { margin: 0; background: #0E1A3B;
+    @top-left { content: none; } @top-right { content: none; } @bottom-left { content: none; } @bottom-right { content: none; } }
+
+  html { font-family: "DM Sans", "Report Fallback", sans-serif; font-size: 9.4pt; line-height: 1.6; color: #1F1F23; }  /* page colour comes from @page */
+  body { margin: 0; }
+  .locname { string-set: locname content(); }
+  strong, b { font-weight: 700; color: #0E1A3B; }
+  em { font-style: italic; }
+  a { color: #2443D6; text-decoration: none; }
+  code { font-family: "DM Mono", "DM Sans", "Report Fallback", monospace; font-size: 0.9em; color: #2443D6; }
+
+  /* Headings — large serif */
+  h1, h2, h3, h4 { font-family: "Fraunces", "Report Fallback", serif; font-weight: 400; color: #0E1A3B; line-height: 1.15; }
+  h2.section { string-set: section content(); break-after: avoid; font-size: 27pt; letter-spacing: -0.015em;
+               margin: 10mm 0 6mm; padding-top: 4mm; border-top: 0.5pt solid #D8CFBE; }
+  /* Section number becomes a small uppercase mono label above the heading */
+  h2.section .num { display: block; font-family: "DM Mono", "DM Sans", "Report Fallback"; font-size: 7.4pt; font-weight: 500;
+                    letter-spacing: 0.16em; color: #2443D6; margin: 0 0 3mm; padding-left: 9mm; position: relative; }
+  h2.section .num::before { content: ""; position: absolute; left: 0; top: 50%; width: 6mm; border-top: 1pt solid #2443D6; }
+  h3 { font-size: 15pt; margin: 8mm 0 2.5mm; break-after: avoid; letter-spacing: -0.005em; }
+  h4 { font-size: 11.5pt; font-style: italic; margin: 5mm 0 1.5mm; break-after: avoid; }
+  p { margin: 0 0 3mm; orphans: 3; widows: 3; }
+  ul, ol { margin: 0 0 3.5mm; padding-left: 5mm; }
+  li { margin-bottom: 1.2mm; }
+  li::marker { color: #2443D6; }
+  .muted { color: #6E6758; }
+  .small { font-size: 8.1pt; }
+
+  /* Large italic statements */
+  .statement { font-family: "Fraunces", "Report Fallback", serif; font-style: italic; font-weight: 400; font-size: 16pt; line-height: 1.35; color: #0E1A3B; margin-bottom: 2mm; }
+
+  /* Small uppercase mono: labels, metadata, tags, navigation */
+  .label, .tag, .pill, th, .toc, .kpi .label, .kpi .note, .cover-item .label, .brand, .cover-foot, .legend {
+    font-family: "DM Mono", "DM Sans", "Report Fallback", monospace; }
+
+  /* ---------- Cover (navy) ---------- */
+  .cover { page: cover; height: 297mm; position: relative; background: #0E1A3B; color: #F4EFE6; }
+  .cover-band { padding: 30mm 20mm 0; }
+  .brand { font-size: 7.4pt; letter-spacing: 0.22em; text-transform: uppercase; color: #9AA6C8; padding-left: 9mm; position: relative; }
+  .brand::before { content: ""; position: absolute; left: 0; top: 50%; width: 6mm; border-top: 1pt solid #2443D6; }
+  .cover h1 { color: #F4EFE6; font-size: 50pt; font-weight: 400; letter-spacing: -0.02em; line-height: 1.02; margin: 26mm 0 7mm; width: 150mm; }
+  .cover .subtitle { font-family: "Fraunces", "Report Fallback", serif; font-style: italic; font-size: 19pt; color: #C9D2F6; }
+  .cover-rule { width: 100%; height: 0; border-top: 0.5pt solid #34446E; margin-top: 18mm; }
+  .cover-body { padding: 10mm 20mm; }
+  .cover-grid { display: flex; flex-wrap: wrap; gap: 8mm 10mm; }
+  .cover-item { width: 75mm; border-top: 0.5pt solid #34446E; padding-top: 2.5mm; }
+  .cover-item .label { font-size: 6.6pt; text-transform: uppercase; letter-spacing: 0.18em; color: #7F8DB8; margin-bottom: 1.5mm; }
+  .cover-item .value { font-size: 12pt; color: #F4EFE6; }
+  .cover-item .meta { font-family: "DM Mono", "DM Sans", "Report Fallback"; font-size: 7pt; color: #7F8DB8; margin-top: 0.8mm; }
+  .cover-foot { position: absolute; bottom: 16mm; left: 20mm; right: 20mm; font-size: 6.8pt; line-height: 1.7; color: #9AA6C8;
+                border-top: 0.5pt solid #34446E; padding-top: 4mm; }
+  .cover-foot em { color: #F4EFE6; }
+
+  /* ---------- Contents ---------- */
+  .toc { break-before: page; }
+  .toc h2 { font-size: 34pt; letter-spacing: -0.02em; margin: 4mm 0 10mm; }
+  .toc ol { list-style: none; padding: 0; margin-bottom: 12mm; border-top: 0.5pt solid #0E1A3B; }
+  .toc li { margin: 0; padding: 2.6mm 0; border-bottom: 0.5pt solid #D8CFBE; font-size: 8.6pt; letter-spacing: 0.04em; text-transform: uppercase; }
+  .toc a { color: #1F1F23; }
+  .toc a::after { content: leader(' ') target-counter(attr(href), page); color: #2443D6; }
+  .toc h3, .toc p { font-family: "DM Sans", "Report Fallback", sans-serif; text-transform: none; letter-spacing: 0; }
+  .toc h3 { font-family: "Fraunces", "Report Fallback", serif; font-size: 15pt; }
+  .toc p { font-size: 9pt; line-height: 2; }
+
+  /* ---------- Provenance tags (outlined, one hue each) ---------- */
+  .tag { display: inline-block; font-size: 6.2pt; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em;
+         padding: 0.2mm 1.4mm; border: 0.5pt solid; border-radius: 0; vertical-align: middle; margin-left: 1mm; background: transparent; }
+  .tag-observed { color: #2443D6; border-color: #2443D6; }
+  .tag-estimate { color: #A0611A; border-color: #C98A3A; }
+  .tag-ai { color: #6D3FD6; border-color: #8B5CF6; }
+  .tag-template { color: #5C5648; border-color: #A79F8D; }
+  .tag-user { color: #2F7D4B; border-color: #3E9B5F; }
+  .tag-missing { color: #B33A3A; border-color: #D64545; }
+
+  /* ---------- KPI cards ---------- */
+  .kpis { display: flex; flex-wrap: wrap; gap: 4mm; margin: 4mm 0 7mm; }
+  .kpi { width: 54mm; border-top: 1pt solid #0E1A3B; padding: 3mm 0 0; break-inside: avoid; }
+  .kpi .label { font-size: 6.4pt; color: #6E6758; text-transform: uppercase; letter-spacing: 0.14em; }
+  .kpi .value { font-family: "Fraunces", "DM Sans", "Report Fallback", serif; font-size: 19pt; font-weight: 400; color: #0E1A3B; margin: 1mm 0 1mm; line-height: 1.15; }
+  .kpi .note { font-size: 6.6pt; color: #6E6758; }
+
+  /* ---------- Boxes ---------- */
+  .callout { border-left: 1.5pt solid #2443D6; background: #FBF8F2; padding: 3.5mm 5mm; margin: 4mm 0; break-inside: avoid; }
+  .warning { border-left: 1.5pt solid #D64545; background: #FBF0EE; padding: 3.5mm 5mm; margin: 4mm 0; break-inside: avoid; }
+  .note-box { border-left: 1.5pt solid #E8962E; background: #FBF4E8; padding: 3.5mm 5mm; margin: 4mm 0; break-inside: avoid; }
+  .unavailable { color: #B33A3A; font-style: italic; }
+
+  /* ---------- Figures ---------- */
+  figure { margin: 5mm 0 6mm; break-inside: avoid; text-align: center; }
+  figure img { max-width: 100%; }
+  figure img.map { max-height: 108mm; padding: 2.5mm; background: #FBF8F2; border: 0.5pt solid #0E1A3B; }
+  figure img.chart { max-height: 74mm; }
+  figure.flow { background: #FBF8F2; border: 0.5pt solid #D8CFBE; padding: 6mm 5mm 4mm; }
+  figure.flow svg { width: 122mm; height: auto; }
+  figure.flow figcaption { border-top: 0.5pt solid #D8CFBE; padding-top: 2.5mm; margin-top: 4mm; }
+  #sec-summary, #sec-revenue, #sec-roadmap, #sec-final, #sec-appendix { break-before: page; }
+  figcaption { font-size: 7.8pt; line-height: 1.5; color: #6E6758; text-align: left; margin-top: 2.5mm; }
+  .legend { display: flex; justify-content: center; gap: 6mm; font-size: 6.8pt; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2mm; color: #1F1F23; }
+  .swatch { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 50%; vertical-align: middle; margin-right: 1.2mm; }
+
+  /* ---------- Tables ---------- */
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0 5mm; font-size: 8.3pt; }
+  thead { display: table-header-group; }
+  th { background: transparent; color: #2443D6; text-align: left; padding: 1.8mm 2mm 1.6mm; border-bottom: 1pt solid #0E1A3B;
+       font-size: 6.6pt; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; }
+  tbody th { color: #6E6758; border-bottom: 0.5pt solid #D8CFBE; }
+  td { padding: 1.8mm 2mm; border-bottom: 0.5pt solid #D8CFBE; vertical-align: top; }
+  tr { break-inside: avoid; }
+  td.num, th.num { text-align: right; }
+  td.num { font-family: "DM Mono", "DM Sans", "Report Fallback", monospace; font-size: 8pt; white-space: nowrap; }
+  .pill { display: inline-block; padding: 0 1.6mm; font-size: 6.4pt; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; border: 0.5pt solid; }
+  .pill-high { color: #B33A3A; border-color: #D64545; }
+  .pill-medium { color: #A0611A; border-color: #E8962E; }
+  .pill-low { color: #2F7D4B; border-color: #3E9B5F; }
+  .pill-empty { color: #6E6758; border-color: #D8CFBE; }
+  .pill-yes { color: #2F7D4B; border-color: #3E9B5F; }
+  .pill-no { color: #B33A3A; border-color: #D64545; }
+
+  .two-col { display: flex; gap: 8mm; }
+  .two-col > div { flex: 1; }
+
+  /* ---------- Roadmap step cards ---------- */
+  .step { border-top: 0.5pt solid #0E1A3B; padding: 2.8mm 0 1.5mm; margin-bottom: 2.5mm; break-inside: avoid; font-size: 8.1pt; line-height: 1.5; }
+  .step h4 { margin: 0 0 1.2mm; font-size: 11.5pt; }
+  .step p { margin-bottom: 1.2mm; }
+  .step ul { margin-bottom: 1mm; }
+  .step li { margin-bottom: 0.3mm; }
+  .step .grid { display: flex; gap: 5mm; font-size: 7.8pt; }
+  .step .grid > div { flex: 1; }
+  .step .grid strong { font-family: "DM Mono", "DM Sans", "Report Fallback"; font-weight: 500; font-size: 6.4pt; text-transform: uppercase; letter-spacing: 0.12em; color: #2443D6; }
+  .checklist li { list-style: none; margin-left: -5mm; padding: 1.6mm 0; border-bottom: 0.5pt solid #D8CFBE; }
+  .checklist li::before { content: "☐  "; font-family: "Report Fallback"; font-size: 10pt; color: #2443D6; }
+
+  /* ---------- Dark pages: navy and royal blue ---------- */
+  .pg-navy { page: navy; }
+  .pg-royal { page: royal; }
+  .pg-dark { color: #F4EFE6; }
+  .pg-dark h2, .pg-dark h3, .pg-dark h4, .pg-dark strong, .pg-dark .statement { color: #F4EFE6; }
+  .pg-dark h2.section { border-top-color: rgba(244, 239, 230, 0.28); }
+  .pg-dark h2.section .num { color: #C9D2F6; }
+  .pg-dark h2.section .num::before { border-top-color: #C9D2F6; }
+  .pg-dark .muted, .pg-dark figcaption { color: #C3CBE6; }
+  .pg-dark li::marker { color: #C9D2F6; }
+  .pg-dark a, .pg-dark code { color: #C9D2F6; }
+  .pg-dark th { color: #C9D2F6; border-bottom-color: #F4EFE6; }
+  .pg-dark td { border-bottom-color: rgba(244, 239, 230, 0.22); }
+  .pg-dark .kpi { border-top-color: #F4EFE6; }
+  .pg-dark .kpi .value { color: #F4EFE6; }
+  .pg-dark .kpi .label, .pg-dark .kpi .note { color: #C9D2F6; }
+  .pg-dark .callout { background: rgba(244, 239, 230, 0.08); border-left-color: #F4EFE6; }
+  .pg-dark .warning { background: rgba(214, 69, 69, 0.18); border-left-color: #FF9B9B; }
+  .pg-dark .note-box { background: rgba(232, 150, 46, 0.16); border-left-color: #F2B866; }
+  .pg-dark .unavailable { color: #FFB4B4; }
+  .pg-dark .tag, .pg-dark .pill { background: transparent; }
+  .pg-dark .tag-observed { color: #C9D2F6; border-color: #C9D2F6; }
+  .pg-dark .tag-estimate { color: #F2C98A; border-color: #F2C98A; }
+  .pg-dark .tag-ai { color: #D8C8FF; border-color: #D8C8FF; }
+  .pg-dark .tag-template { color: #E4DFD4; border-color: #A9B2CF; }
+  .pg-dark .tag-user { color: #A6E5BC; border-color: #A6E5BC; }
+  .pg-dark .tag-missing, .pg-dark .pill-no, .pg-dark .pill-high { color: #FFB4B4; border-color: #FFB4B4; }
+  .pg-dark .pill-yes, .pg-dark .pill-low { color: #A6E5BC; border-color: #A6E5BC; }
+  .pg-dark .pill-medium { color: #F2C98A; border-color: #F2C98A; }
+  .pg-dark .pill-empty { color: #C3CBE6; border-color: #7F8DB8; }
+  .pg-dark .checklist li { border-bottom-color: rgba(244, 239, 230, 0.22); }
+  .pg-dark .checklist li::before { color: #F4EFE6; }
+  /* Flowcharts and charts keep their ivory card on dark pages, so their colours stay readable. */
+  .pg-dark figure.flow { border-color: transparent; color: #1F1F23; }
+  .pg-dark figure.flow figcaption { color: #6E6758; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="cover-band">
+    <div class="brand">{{ meta.platform }}</div>
+    <h1>Business Intelligence Report</h1>
+    <div class="subtitle">Location analysis{% if meta.business %} · {{ meta.business }}{% endif %}</div>
+    <div class="cover-rule"></div>
+  </div>
+  <div class="cover-body">
+    <div class="cover-grid">
+      <div class="cover-item"><div class="label">Location</div><div class="value locname">{{ meta.location_name }}</div></div>
+      <div class="cover-item"><div class="label">Coordinates</div><div class="value">{{ meta.latitude|floatformat:5 }}, {{ meta.longitude|floatformat:5 }}</div></div>
+      <div class="cover-item"><div class="label">Business category</div><div class="value">{% if meta.business %}{{ meta.business }}{% else %}Not available{% endif %}</div>
+        <div class="meta">{% if meta.requested_business %}Selected by you{% elif meta.business %}Top recommendation of the platform's ML model{% endif %}</div></div>
+      <div class="cover-item"><div class="label">Analysis radius</div><div class="value">{{ meta.radius_m|floatformat:0 }} m</div></div>
+      <div class="cover-item"><div class="label">Generated</div><div class="value">{{ meta.generated_at_local }}</div><div class="meta">{{ meta.generated_at_utc }} UTC</div></div>
+      <div class="cover-item"><div class="label">Report reference</div><div class="value">{{ meta.reference }}</div></div>
+    </div>
+  </div>
+  <div class="cover-foot">
+    Private report. Figures marked <em>estimate</em> come from the platform's models and are not guarantees of sales or profit.
+    Map data © OpenStreetMap contributors. {{ meta.ai_message }}
+  </div>
+</section>
+
+<section class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#sec-summary">1. Executive summary</a></li>
+    <li><a href="#sec-location">2. Location overview</a></li>
+    <li><a href="#sec-heatmap">3. Crowd heatmap analysis</a></li>
+    <li><a href="#sec-recommendations">4. Business recommendations</a></li>
+    <li><a href="#sec-competition">5. Competition and market</a></li>
+    <li><a href="#sec-revenue">6. Revenue forecast</a></li>
+    <li><a href="#sec-feasibility">7. Business feasibility</a></li>
+    <li><a href="#sec-roadmap">8. Implementation roadmap</a></li>
+    <li><a href="#sec-risks">9. Risk analysis</a></li>
+    <li><a href="#sec-final">10. Final recommendations and checklist</a></li>
+    <li><a href="#sec-appendix">Appendix: sources, assumptions and limitations</a></li>
+  </ol>
+  <h3>How to read this report</h3>
+  <p>Every figure is labelled with where it came from:</p>
+  <p>
+    <span class="tag tag-observed">Observed</span> retrieved from map data &nbsp;
+    <span class="tag tag-estimate">Estimate</span> produced by a model &nbsp;
+    <span class="tag tag-ai">AI text</span> written by Google Gemini from the data &nbsp;
+    <span class="tag tag-template">Template text</span> written by fixed rules from the data &nbsp;
+    <span class="tag tag-user">Your input</span> &nbsp;
+    <span class="tag tag-missing">Missing</span> not available
+  </p>
+  <p class="small muted">The platform uses OpenStreetMap features (shops, amenities, buildings, roads, transit stops) as indicators of commercial activity. It does not measure how many people walk past, and it has no data on rent, costs or actual sales.</p>
+</section>
+
+<div class="pg-royal pg-dark">{% include "reports/sections/summary.html" %}</div>
+{% include "reports/sections/location.html" %}
+{% include "reports/sections/heatmap.html" %}
+{% include "reports/sections/recommendations.html" %}
+{% include "reports/sections/competition.html" %}
+{% include "reports/sections/revenue.html" %}
+<div class="pg-navy pg-dark">{% include "reports/sections/feasibility.html" %}</div>
+{% include "reports/sections/roadmap.html" %}
+{% include "reports/sections/risks.html" %}
+<div class="pg-navy pg-dark">{% include "reports/sections/final.html" %}</div>
+{% include "reports/sections/appendix.html" %}
+</body>
+</html>

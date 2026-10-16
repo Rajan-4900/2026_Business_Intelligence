@@ -1,0 +1,28 @@
+{% load report_tags %}
+<h2 class="section" id="sec-risks"><span class="num">9</span>&nbsp;Risk analysis</h2>
+
+<p>Each risk is rated Low / Medium / High for likelihood and impact. Ratings marked <strong>platform data</strong> follow fixed rules applied to the analysis (shown in the table). Ratings marked <strong>judgement</strong> cover factors the platform has no data on.</p>
+
+{% if charts.risk_matrix %}
+<figure>
+  <img class="chart" src="{{ charts.risk_matrix }}" alt="Risk matrix" style="max-height:85mm">
+  <figcaption>Figure 9.1 – Risk matrix. Numbers refer to the table below; circles are rated from platform data, squares are qualitative judgement.</figcaption>
+</figure>
+{% endif %}
+
+<table>
+  <thead><tr><th>#</th><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Basis</th><th>Evidence and rule</th><th>Mitigation</th></tr></thead>
+  <tbody>
+  {% for r in risks %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td><strong>{{ r.risk }}</strong></td>
+      <td>{{ r.likelihood|level_word }}</td>
+      <td>{{ r.impact|level_word }}</td>
+      <td>{% if r.basis == 'measured' %}<span class="tag tag-observed">Platform data</span>{% else %}<span class="tag tag-template">Judgement</span>{% endif %}</td>
+      <td class="small">{{ r.evidence }} <span class="muted">{{ r.rule }}</span></td>
+      <td class="small">{{ r.mitigation }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>

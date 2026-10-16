@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'tracker',
     'business_intelligence',
     'favorites',
+    'report_generator',
 ]
 
 MIDDLEWARE = [
@@ -175,3 +176,12 @@ CHANNEL_LAYERS = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+# AI-powered PDF report generator (report_generator app). See docs/REPORT_GENERATION.md.
+REPORT_RETENTION_HOURS = int(os.environ.get('REPORT_RETENTION_HOURS', '24'))
+REPORT_MAX_CONCURRENT = int(os.environ.get('REPORT_MAX_CONCURRENT', '2'))
+REPORT_MAX_PER_HOUR = int(os.environ.get('REPORT_MAX_PER_HOUR', '10'))
+REPORT_AI_TIMEOUT = float(os.environ.get('REPORT_AI_TIMEOUT', '25'))
+REPORT_AI_ENABLED = os.environ.get('REPORT_AI_ENABLED', 'True') == 'True'
+REPORT_SCREENSHOT_MAX_BYTES = int(os.environ.get('REPORT_SCREENSHOT_MAX_BYTES', str(2 * 1024 * 1024)))
+# Tests set this to True so generation runs in the request instead of a thread.
+REPORT_RUN_INLINE = os.environ.get('REPORT_RUN_INLINE', 'False') == 'True'

@@ -12,7 +12,8 @@
     "train": "python3 run.py train",
     "superuser": "python3 run.py superuser",
     "check": "python3 run.py check",
-    "clean": "python3 run.py clean"
+    "clean": "python3 run.py clean",
+    "test:js": "node --test tests/js/*.test.js"
   },
   "keywords": [
     "business-intelligence",
@@ -23,5 +24,8 @@
     "websockets"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
 }

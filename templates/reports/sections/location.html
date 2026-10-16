@@ -1,0 +1,52 @@
+{% load report_tags %}
+<h2 class="section" id="sec-location"><span class="num">2</span>&nbsp;Location overview</h2>
+
+<table>
+  <tbody>
+    <tr><th style="width:42mm">Location</th><td>{{ s.location.name }} <span class="tag tag-user">Your input</span></td></tr>
+    <tr><th>Latitude, longitude</th><td>{{ s.location.latitude|floatformat:6 }}, {{ s.location.longitude|floatformat:6 }}</td></tr>
+    <tr><th>Analysis radius</th><td>{{ s.location.radius_m }} m (the radius the platform's heatmap uses)</td></tr>
+    <tr><th>Data collected</th><td>{{ meta.collected_at_local }}</td></tr>
+    <tr><th>Mapped features within radius</th><td>{{ s.pois.in_radius }} <span class="tag tag-observed">Observed</span> ({{ s.pois.named }} have a name)</td></tr>
+  </tbody>
+</table>
+
+<h3>What is around the location {% include "reports/sections/_src.html" with st=t.location %}</h3>
+<p>{{ t.location.data.overview }}</p>
+<p>{{ t.location.data.commercial_character }}</p>
+
+{% if charts.location_map %}
+<figure>
+  <img class="map" src="{{ charts.location_map }}" alt="Map of mapped features around the location">
+  <figcaption>Figure 2.1 – Every mapped feature within {{ s.location.radius_m }} m, plotted from its OpenStreetMap coordinates. The star is the selected location; the dashed circle is the analysis radius. <span class="tag tag-observed">Observed</span></figcaption>
+</figure>
+{% endif %}
+
+{% if charts.poi_families %}
+<figure>
+  <img class="chart" src="{{ charts.poi_families }}" alt="Mapped features by category">
+  <figcaption>Figure 2.2 – Mapped features by category. Buildings and road segments are counted because the platform's heatmap counts them too. <span class="tag tag-observed">Observed</span></figcaption>
+</figure>
+{% else %}
+<p class="unavailable">Data unavailable for this analysis. {{ s.pois.reason }}</p>
+{% endif %}
+
+{% if s.pois.top_types %}
+<h4>Most common place types (amenity / shop / tourism tags)</h4>
+<table>
+  <thead><tr><th>Type</th><th class="num">Count</th><th>Type</th><th class="num">Count</th></tr></thead>
+  <tbody>
+  {% for row in top_type_rows %}
+    <tr><td>{{ row.0.0|nice }}</td><td class="num">{{ row.0.1 }}</td><td>{% if row.1 %}{{ row.1.0|nice }}{% endif %}</td><td class="num">{% if row.1 %}{{ row.1.1 }}{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h4>Data caveats</h4>
+<ul class="small">{% for c in t.location.data.data_caveats %}<li>{{ c }}</li>{% endfor %}</ul>
+
+<h3>How the platform analyses a location</h3>
+<figure class="flow">{{ flows.analysis|safe }}
+  <figcaption>Flowchart A – The platform's analysis pipeline as implemented. A location is chosen, mapped features within 2 km are fetched from OpenStreetMap, counted into 9 sectors, and the resulting intensity feeds the ML recommendation and the feasibility rules.</figcaption>
+</figure>

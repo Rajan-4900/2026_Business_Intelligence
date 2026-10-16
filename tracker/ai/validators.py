@@ -15,6 +15,7 @@ SAFE_INTENTS = {
     'open_dashboard',
     'open_form',
     'find_popular_places',
+    'generate_report',
 }
 
 # Sensitive keys that must NEVER be passed to external AI models
@@ -142,6 +143,8 @@ def validate_structured_action(action: Dict[str, Any]) -> Optional[Dict[str, Any
         valid_action['business_type'] = sanitize_input(action['business_type'], 100)
     if 'locations' in action and isinstance(action['locations'], list):
         valid_action['locations'] = [sanitize_input(str(loc), 150) for loc in action['locations'][:5]]
+    if intent == 'generate_report' and action.get('auto_run') is True:
+        valid_action['auto_run'] = True
     if 'label' in action and isinstance(action['label'], str):
         valid_action['label'] = sanitize_input(action['label'], 60)
     else:
@@ -155,6 +158,7 @@ def validate_structured_action(action: Dict[str, Any]) -> Optional[Dict[str, Any
             'open_dashboard': '📈 Open Dashboard',
             'open_form': '📝 Submit Business Info',
             'find_popular_places': '🎯 Popular Places Radar',
+            'generate_report': '📄 Generate PDF report',
         }
         valid_action['label'] = labels.get(intent, 'Action')
         

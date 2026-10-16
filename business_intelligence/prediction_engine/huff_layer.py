@@ -25,6 +25,13 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return radius * c
 
+def is_competitor(poi_type: str, business_type: str) -> bool:
+    """Same-category rule shared by the Huff layers (and the PDF report's competitor list)."""
+    if business_type == 'default' or not poi_type:
+        return False
+    return poi_type == business_type or business_type in poi_type or poi_type in business_type
+
+
 class HuffModel:
     """Computes customer attraction, choice probability, and trading area market share."""
 
@@ -58,15 +65,7 @@ class HuffModel:
             if not poi_type:
                 continue
                 
-            is_comp = False
-            if self.business_type == 'default':
-                is_comp = False
-            elif poi_type == self.business_type:
-                is_comp = True
-            elif self.business_type in poi_type or poi_type in self.business_type:
-                is_comp = True
-                
-            if is_comp:
+            if is_competitor(poi_type, self.business_type):
                 lat = el.get('lat') or (el.get('center') or {}).get('lat')
                 lon = el.get('lon') or (el.get('center') or {}).get('lon')
                 if lat is not None and lon is not None:

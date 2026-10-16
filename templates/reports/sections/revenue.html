@@ -1,0 +1,77 @@
+{% load report_tags %}
+<h2 class="section" id="sec-revenue"><span class="num">6</span>&nbsp;Revenue forecast</h2>
+
+{% if s.revenue.status == 'ok' %}
+<div class="warning"><strong>These are estimates of gross sales, not profit and not a guarantee.</strong> They come from the platform's Extended Huff model using mapped features only. Rent, salaries, stock and other costs are not known, so net profit cannot be calculated.</div>
+{% if s.revenue.uses_default_assumptions %}
+<div class="note-box">The engine has no specific parameters for <strong>{{ s.revenue.business_type }}</strong> and used its generic defaults (average spend {{ s.revenue.assumptions.avg_spend|inr }}, conversion {{ s.revenue.assumptions.conversion_rate|pct }}). The figures below are especially rough for this category.</div>
+{% endif %}
+
+<div class="kpis">
+  <div class="kpi"><div class="label">Daily gross sales</div><div class="value">{{ s.revenue.daily|inr }}</div><div class="note"><span class="tag tag-estimate">Estimate</span></div></div>
+  <div class="kpi"><div class="label">Monthly (× 30)</div><div class="value">{{ s.revenue.monthly|inr }}</div><div class="note"><span class="tag tag-estimate">Estimate</span></div></div>
+  <div class="kpi"><div class="label">Annual (× 365)</div><div class="value">{{ s.revenue.annual|inr }}</div><div class="note"><span class="tag tag-estimate">Estimate</span></div></div>
+  <div class="kpi"><div class="label">Engine confidence</div><div class="value">{{ s.revenue.confidence_score }}/100</div><div class="note"><span class="tag tag-estimate">Estimate</span> from data density and competition</div></div>
+  <div class="kpi"><div class="label">Engine risk level</div><div class="value">{{ s.revenue.risk_level }}</div><div class="note"><span class="tag tag-estimate">Estimate</span></div></div>
+  <div class="kpi"><div class="label">Business health</div><div class="value">{{ s.revenue.business_health }}</div><div class="note"><span class="tag tag-estimate">Estimate</span></div></div>
+</div>
+
+<h3>What the forecast means {% include "reports/sections/_src.html" with st=t.revenue %}</h3>
+<p>{{ t.revenue.data.revenue_explanation }}</p>
+
+<h3>Scenarios</h3>
+{% if s.revenue.scenarios %}
+<table>
+  <thead><tr><th>Scenario</th><th class="num">Gross sales / month</th><th>How it is derived</th></tr></thead>
+  <tbody>
+    <tr><td>Conservative</td><td class="num">{{ s.revenue.scenarios.conservative|inr }}</td><td class="small">Lower end of the engine's range</td></tr>
+    <tr><td><strong>Base</strong></td><td class="num"><strong>{{ s.revenue.scenarios.base|inr }}</strong></td><td class="small">Engine's central estimate (daily × 30)</td></tr>
+    <tr><td>Optimistic</td><td class="num">{{ s.revenue.scenarios.optimistic|inr }}</td><td class="small">Upper end of the engine's range</td></tr>
+  </tbody>
+</table>
+<p>{{ t.revenue.data.scenario_explanation }}</p>
+{% if charts.scenarios %}
+<figure>
+  <img class="chart" src="{{ charts.scenarios }}" alt="Revenue scenarios">
+  <figcaption>Figure 6.1 – Monthly gross sales scenarios. The range is ±{{ s.revenue.scenarios.spread_pct }}% around the base: the engine widens it as its confidence score falls (±10% to ±40%). It is not a statistical confidence interval. <span class="tag tag-estimate">Estimate</span></figcaption>
+</figure>
+{% endif %}
+{% else %}
+<p class="unavailable">Data unavailable for this analysis. The engine returned no usable range.</p>
+{% endif %}
+
+<h3>How the number is built</h3>
+{% if s.revenue.breakdown %}
+<table>
+  <thead><tr><th>Step</th><th class="num">Value</th><th>Type</th></tr></thead>
+  <tbody>
+    <tr><td>Visitor proxy (daily people the engine expects in the area)</td><td class="num">{{ s.revenue.breakdown.visitor_proxy|floatformat:0 }}</td><td><span class="tag tag-estimate">Estimate</span> from mapped homes, offices, transit; not counted people</td></tr>
+    <tr><td>Share of local demand captured (Huff model)</td><td class="num">{{ s.revenue.breakdown.market_share|pct:1 }}</td><td><span class="tag tag-estimate">Estimate</span></td></tr>
+    <tr><td>Competition adjustment (Extended Huff)</td><td class="num">× {{ s.revenue.breakdown.competition_adjustment|floatformat:4 }}</td><td><span class="tag tag-estimate">Estimate</span> lower with more competitors</td></tr>
+    <tr><td>Share of visitors who buy</td><td class="num">{{ s.revenue.assumptions.conversion_rate|pct }}</td><td><span class="tag tag-estimate">Engine assumption</span></td></tr>
+    <tr><td>Estimated daily customers</td><td class="num">{{ s.revenue.breakdown.daily_customers|floatformat:2 }}</td><td><span class="tag tag-estimate">Estimate</span></td></tr>
+    <tr><td>Average spend per customer</td><td class="num">{{ s.revenue.assumptions.avg_spend|inr }}</td><td><span class="tag tag-estimate">Engine assumption</span> for "{{ s.revenue.assumptions.category_label }}"</td></tr>
+    <tr><td>Capacity fit (crowding / under-use factor)</td><td class="num">× {{ s.revenue.breakdown.business_performance|floatformat:2 }}</td><td><span class="tag tag-estimate">Estimate</span> best within {{ s.revenue.assumptions.optimal_daily_customers.0 }}–{{ s.revenue.assumptions.optimal_daily_customers.1 }} customers/day</td></tr>
+    <tr><td><strong>Daily gross sales</strong></td><td class="num"><strong>{{ s.revenue.daily|inr }}</strong></td><td><span class="tag tag-estimate">Estimate</span></td></tr>
+  </tbody>
+</table>
+{% else %}
+<p class="unavailable">The engine's intermediate values could not be reproduced for this location, so the step-by-step breakdown is not shown.</p>
+{% endif %}
+
+<figure class="flow">{{ flows.revenue|safe }}
+  <figcaption>Flowchart D – How the platform's revenue engine turns mapped features into a sales estimate (business_intelligence/prediction_engine).</figcaption>
+</figure>
+
+<h4>Assumptions and notes</h4>
+<ul>{% for n in t.revenue.data.assumption_notes %}<li>{{ n }}</li>{% endfor %}</ul>
+{% if s.revenue.positive_factors or s.revenue.negative_factors %}
+<div class="two-col small">
+  <div><strong>Factors the engine rates positively</strong><ul>{% for f in s.revenue.positive_factors %}<li>{{ f }}</li>{% empty %}<li>None reported</li>{% endfor %}</ul></div>
+  <div><strong>Factors the engine rates negatively</strong><ul>{% for f in s.revenue.negative_factors %}<li>{{ f }}</li>{% empty %}<li>None reported</li>{% endfor %}</ul></div>
+</div>
+{% endif %}
+<p class="small muted">Not used in this report: the revenue API's <code>conversion_rate</code>, <code>customer_quality</code>, <code>dynamic_avg_spend</code> and <code>effective_customers</code> fields, which the code marks as proxies ({% for k, v in s.revenue.excluded_proxy_fields.items %}{{ k }}: {{ v }}{% if not forloop.last %}; {% endif %}{% endfor %}). The map footer's "Est. Monthly Revenue" ({{ s.heatmap.website_legacy_revenue|inr }}) uses a separate legacy formula (₹1,20,000 + ₹7,200 × crowd score) and is not comparable with this forecast.</p>
+{% else %}
+<p class="unavailable">Data unavailable for this analysis. {{ s.revenue.reason }}</p>
+{% endif %}

@@ -1,0 +1,74 @@
+{% load report_tags %}
+<h2 class="section" id="sec-heatmap"><span class="num">3</span>&nbsp;Crowd heatmap analysis</h2>
+
+{% if heatmap_image %}
+<figure>
+  <img class="map" src="{{ heatmap_image }}" alt="Screenshot of the live crowd heatmap for {{ s.location.name }}">
+  <div class="legend">
+    <span><span class="swatch" style="background:#ff0000"></span>High (15+ features)</span>
+    <span><span class="swatch" style="background:#ffaa00"></span>Medium (5–14)</span>
+    <span><span class="swatch" style="background:#00cc00"></span>Low (1–4)</span>
+  </div>
+  <figcaption>Figure 3.1 – Screenshot of the live heatmap for <strong>{{ s.location.name }}</strong>, captured in your browser at {{ capture.captured_at_local|default:"the time of the request" }}{% if capture.zoom %} (map zoom {{ capture.zoom|floatformat:0 }}){% endif %}. It shows the same location as the rest of this report (heatmap centre {{ capture.offset_m|floatformat:0 }} m from the selected point). Each circle marks the average position of the features in one sector; the website draws High, Medium and Low circles at a fixed 800 / 600 / 400 m radius, so circle size shows the level, not the sector's extent. <span class="tag tag-observed">Observed</span></figcaption>
+</figure>
+{% else %}
+<div class="warning">
+  <strong>The live heatmap screenshot is not available for this report.</strong>
+  {% if capture.capture_error %}Reason: {{ capture.capture_error }}.{% else %}No screenshot was supplied with the request.{% endif %}
+  The figure below is a reconstruction drawn by the server from the same sector analysis. It is <strong>not</strong> a screenshot of the website's map and has no street basemap.
+</div>
+{% if charts.sector_map %}
+<figure>
+  <img class="map" src="{{ charts.sector_map }}" alt="Reconstructed sector map">
+  <figcaption>Figure 3.1 – Reconstruction (not a screenshot): sector centroids from the server's analysis, drawn with the website's colours and circle sizes. Grey lines show the 3 distance rings and 3 compass wedges. <span class="tag tag-observed">Observed</span></figcaption>
+</figure>
+{% else %}
+<p class="unavailable">Data unavailable for this analysis.</p>
+{% endif %}
+{% endif %}
+
+{% if capture.counts_differ %}
+<div class="note-box">The map on screen showed {{ capture.client_sector_counts.high }} High, {{ capture.client_sector_counts.medium }} Medium and {{ capture.client_sector_counts.low }} Low sectors, while the server's analysis for this report found {{ s.heatmap.counts.high }}, {{ s.heatmap.counts.medium }} and {{ s.heatmap.counts.low }}. OpenStreetMap data can change between requests. The screenshot shows the earlier on-screen state; all numbers in this report come from the server's analysis.</div>
+{% endif %}
+
+{% if s.heatmap.placeholder_used %}
+<div class="warning">No mapped features with coordinates were found within {{ s.location.radius_m }} m, so no sector could be classified. The website shows a single placeholder "High" marker at the centre in this case; it is not a measurement and is ignored in this report.</div>
+{% else %}
+<div class="kpis">
+  <div class="kpi"><div class="label">High-intensity sectors</div><div class="value">{{ s.heatmap.counts.high }} / 9</div><div class="note"><span class="tag tag-observed">Observed</span> 15+ features each</div></div>
+  <div class="kpi"><div class="label">Medium-intensity sectors</div><div class="value">{{ s.heatmap.counts.medium }} / 9</div><div class="note"><span class="tag tag-observed">Observed</span> 5–14 features each</div></div>
+  <div class="kpi"><div class="label">Low-intensity sectors</div><div class="value">{{ s.heatmap.counts.low }} / 9</div><div class="note"><span class="tag tag-observed">Observed</span> 1–4 features; {{ s.heatmap.counts.empty }} sector(s) empty</div></div>
+</div>
+
+<h3>What the heatmap shows {% include "reports/sections/_src.html" with st=t.heatmap_recs %}</h3>
+<p>{{ t.heatmap_recs.data.heatmap_explanation }}</p>
+<p>{{ t.heatmap_recs.data.spatial_pattern }}</p>
+
+{% if charts.sectors %}
+<figure>
+  <img class="chart" src="{{ charts.sectors }}" alt="Mapped features per sector">
+  <figcaption>Figure 3.2 – Mapped features in each of the 9 sectors, coloured by the platform's intensity level. <span class="tag tag-observed">Observed</span></figcaption>
+</figure>
+{% endif %}
+
+<h4>Sector table</h4>
+<table>
+  <thead><tr><th>Compass wedge</th><th>Distance ring</th><th class="num">Mapped features</th><th>Level</th></tr></thead>
+  <tbody>
+  {% for sec in s.heatmap.sectors %}
+    <tr><td>{{ sec.wedge }}</td><td>{{ sec.ring }}</td><td class="num">{{ sec.count }}</td><td><span class="pill pill-{{ sec.intensity }}">{% if sec.intensity == 'empty' %}None{% else %}{{ sec.intensity|title }}{% endif %}</span></td></tr>
+  {% endfor %}
+  {% for sec in s.heatmap.extra_sectors %}
+    <tr><td colspan="2">Boundary bucket {{ sec.key }} (feature exactly on the edge)</td><td class="num">{{ sec.count }}</td><td><span class="pill pill-{{ sec.intensity }}">{{ sec.intensity|title }}</span></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h4>How to interpret this – and its limits</h4>
+<ul class="small">
+  <li>Levels are thresholds on the <em>number of mapped OpenStreetMap features</em> in a sector (High ≥ {{ thresholds.high }}, Medium {{ thresholds.medium }}–{{ thresholds.high_minus_one }}, Low below {{ thresholds.medium }}), checked against the code in <code>business_intelligence/analysis.py</code>.</li>
+  <li>Features include buildings and road segments. In a densely mapped city almost every sector reaches "High", so the heatmap separates built-up areas from sparse ones better than it ranks busy streets.</li>
+  <li>The heatmap does not count people. Well-mapped areas can look busier than they are, and poorly mapped areas quieter.</li>
+  <li>The website footer's "Crowd Score" ({{ s.heatmap.website_crowd_score }}) is the number of features returned, capped at 100. It is not a measure of people.</li>
+</ul>

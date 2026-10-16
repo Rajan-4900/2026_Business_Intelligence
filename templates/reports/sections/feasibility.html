@@ -1,0 +1,36 @@
+{% load report_tags %}
+<h2 class="section" id="sec-feasibility"><span class="num">7</span>&nbsp;Business feasibility</h2>
+
+{% if s.feasibility.status == 'ok' %}
+<div class="{% if s.feasibility.feasible %}callout{% else %}warning{% endif %}">
+  <strong>Platform result for {{ s.feasibility.business_type }}: {% if s.feasibility.feasible %}Feasible{% else %}Not feasible{% endif %}</strong> <span class="tag tag-estimate">Rule-based</span><br>
+  {{ s.feasibility.message }}
+</div>
+<p>This is the same Go/No-Go check the website runs (<code>/check-feasibility/</code>), applied unchanged. The check is <em>permissive</em>: a business passes if <strong>any one</strong> of the rules below is met.</p>
+<table>
+  <thead><tr><th>Rule</th><th>Result for this location</th></tr></thead>
+  <tbody>
+    <tr><td>Listed in the training data for the area's dominant intensity ({{ s.feasibility.dominant_intensity }})</td><td>{% if s.feasibility.evidence.in_dataset_for_intensity %}<span class="pill pill-yes">Met</span>{% else %}<span class="pill pill-no">Not met</span>{% endif %}</td></tr>
+    <tr><td>Matches the ML model's primary recommendation ({{ s.feasibility.recommended_business|nice }})</td><td>{% if s.feasibility.evidence.matches_ml_recommendation %}<span class="pill pill-yes">Met</span>{% else %}<span class="pill pill-no">Not met</span>{% endif %}</td></tr>
+    <tr><td>At least 2 similar places already mapped nearby (found {{ s.feasibility.evidence.similar_businesses_found }})</td><td>{% if s.feasibility.evidence.local_proof %}<span class="pill pill-yes">Met</span>{% else %}<span class="pill pill-no">Not met</span>{% endif %}</td></tr>
+    <tr><td>High-intensity area and a shop/store/food business</td><td>{% if s.feasibility.evidence.high_intensity_retail_rule %}<span class="pill pill-yes">Applied</span>{% else %}<span class="pill pill-empty">Not applied</span>{% endif %}</td></tr>
+  </tbody>
+</table>
+<p class="small muted">The feasibility rules count only amenity, shop and tourism features ({{ s.feasibility.features_considered }} here), so their sector counts ({{ s.feasibility.evidence.sector_counts.high }} High, {{ s.feasibility.evidence.sector_counts.medium }} Medium, {{ s.feasibility.evidence.sector_counts.low }} Low) differ from the heatmap's.</p>
+
+<h3>What the check does not cover</h3>
+<ul>
+  <li>Existing similar places count as evidence <em>for</em> feasibility; the check does not consider saturation. See Section 5 for competition.</li>
+  <li>Rent, start-up cost, licences, staffing and actual demand are not part of the check.</li>
+  <li>A "Feasible" result means the location passes the platform's rules. It is not an investment recommendation.</li>
+</ul>
+<h3>Conditions to satisfy before investing</h3>
+<ul>
+  <li>Customer demand confirmed by your own footfall counts or survey.</li>
+  <li>Rent and running costs that the conservative revenue scenario can cover.</li>
+  <li>All required licences and approvals confirmed in writing.</li>
+  <li>A clear reason customers would choose you over the competitors in Section 5.</li>
+</ul>
+{% else %}
+<p class="unavailable">Data unavailable for this analysis. {{ s.feasibility.reason }}</p>
+{% endif %}

@@ -1,0 +1,37 @@
+{% load report_tags %}
+<h2 class="section" id="sec-final"><span class="num">10</span>&nbsp;Final recommendations</h2>
+
+<div class="callout"><p class="statement">{{ t.summary.data.final_recommendation }}</p>{% include "reports/sections/_src.html" with st=t.summary %}</div>
+
+{% if s.candidates %}
+<h3>Most promising candidates, by the platform's measures</h3>
+<ol>
+{% for c in ranked_candidates %}
+  <li><strong>{{ c.business }}</strong> – potential score {{ c.potential_score }}/100, about {{ c.monthly_revenue|inr }} gross sales per month (estimate), {{ c.competitors }} matched competitor{{ c.competitors|pluralize }}{% if c.feasible is not None %}, {% if c.feasible %}passes{% else %}fails{% endif %} the feasibility rules{% endif %}{% if c.uses_default_assumptions %} – generic engine assumptions, treat with extra caution{% endif %}.</li>
+{% endfor %}
+</ol>
+<p class="small muted">Ordered by the revenue engine's potential score. These rankings come from map-based models only and should not decide an investment on their own.</p>
+{% endif %}
+
+<h3>Questions you still need to answer</h3>
+<ul>{% for q in t.summary.data.open_questions %}<li>{{ q }}</li>{% endfor %}</ul>
+
+<h3>Information to collect</h3>
+<ul>
+  <li>Footfall counts at the exact premises you can rent, on weekdays and weekends.</li>
+  <li>Rent, deposit and fit-out quotes.</li>
+  <li>Monthly operating costs: staff, utilities, stock, marketing.</li>
+  <li>Prices, hours and busyness of the nearest competitors.</li>
+  <li>Licences and approvals required for your exact business and premises.</li>
+</ul>
+
+<h3>Prioritised action plan</h3>
+<ol>{% for x in t.summary.data.next_steps %}<li>{{ x }}</li>{% endfor %}</ol>
+
+<h3>Deciding whether to go ahead</h3>
+<figure class="flow">{{ flows.go_no_go|safe }}
+  <figcaption>Flowchart E – A recommended manual validation process. It is not an automated platform decision; the platform's own Go/No-Go rule is described in Section 7.</figcaption>
+</figure>
+
+<h3>Investment-validation checklist</h3>
+<ul class="checklist">{% for c in checklist %}<li>{{ c }}</li>{% endfor %}</ul>

@@ -49,3 +49,6 @@ api_verify.py
 list_models.py
 test_gemini.py
 .DS_Store
+
+# Node (frontend tests)
+node_modules/
