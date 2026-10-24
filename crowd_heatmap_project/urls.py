@@ -16,8 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.conf import settings
-from django.views.static import serve
+from django.contrib.staticfiles.views import serve as static_serve
+
+def serve_static(request, path, **kwargs):
+    return static_serve(request, path, insecure=True)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,5 +27,5 @@ urlpatterns = [
     path('', include('business_intelligence.urls')),
     path('', include('favorites.urls')),
     path('', include('report_generator.urls')),
-    re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
+    re_path(r'^static/(?P<path>.*)$', serve_static),
 ]
