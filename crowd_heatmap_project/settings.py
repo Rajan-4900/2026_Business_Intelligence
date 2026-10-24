@@ -32,6 +32,7 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Production Security Settings
 if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
