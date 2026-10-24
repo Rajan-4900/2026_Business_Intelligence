@@ -201,6 +201,10 @@
                                 <i class="fas fa-th-large text-info" style="font-size: 1rem;"></i>
                                 <span>Dashboard</span>
                             </a>
+                            <a class="nav-user-item" href="/favorites/">
+                                <i class="fas fa-heart text-danger" style="font-size: 1rem;"></i>
+                                <span>My Favorites</span>
+                            </a>
                             <hr class="nav-user-divider">
                             <button class="nav-user-item item-danger" id="nav-supabase-logout" type="button">
                                 <i class="fas fa-sign-out-alt" style="font-size: 1rem;"></i>

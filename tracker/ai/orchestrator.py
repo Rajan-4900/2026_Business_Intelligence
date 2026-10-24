@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional, Tuple
 import requests
 from django.core.cache import cache
 
-from .validators import sanitize_input, is_platform_relevant
+from .validators import sanitize_input, is_platform_relevant, validate_structured_action
 from .prompts import OUT_OF_SCOPE_RESPONSE
 from .gemini_service import analyze_location as gemini_analyze
 from .grok_service import review_location as grok_review
@@ -214,6 +214,14 @@ def process_user_query(
             "message": "Please enter a message or location to analyze.",
             "structured_actions": []
         }
+
+    # Step 0: Report requests go to the shared report generator (report_generator app),
+    # never to a default or stale location.
+    from report_generator.intent import is_report_request, chat_response as report_chat_response
+    if is_report_request(sanitized_query):
+        reply = report_chat_response(client_location_context)
+        reply['structured_actions'] = [a for a in (validate_structured_action(x) for x in reply['structured_actions']) if a]
+        return reply
 
     # Step 1: Validate Query Relevance (Strict Domain Scope)
     if not is_platform_relevant(sanitized_query):

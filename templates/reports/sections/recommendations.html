@@ -1,0 +1,62 @@
+{% load report_tags %}
+<h2 class="section" id="sec-recommendations"><span class="num">4</span>&nbsp;Business recommendations</h2>
+
+{% if s.recommendation.status == 'ok' %}
+<div class="callout">
+  The platform's ML model recommends: <strong>{{ s.recommendation.primary }}</strong> <span class="tag tag-estimate">Estimate</span>
+  (for this {{ s.recommendation.intensity }}-intensity area{% if s.recommendation.area_hint %} with a "{{ s.recommendation.area_hint }}" character inferred from nearby places{% endif %}).
+  {% if s.requested_business %}You selected <strong>{{ s.requested_business }}</strong> <span class="tag tag-user">Your input</span>; the forecast, competition and feasibility sections focus on your choice.{% endif %}
+</div>
+<p class="small"><strong>What the model is.</strong> A decision tree (scikit-learn) trained on {{ model_rows }} hand-labelled examples that pair a crowd level, shop density and area type with a business. It returns one label and no score, so it cannot say how much better one business is than another, and its output is not a probability. The alternatives are the model's answers for the <em>other</em> intensity levels. Businesses listed in the training data for a {{ s.recommendation.intensity }}-intensity area: {{ s.recommendation.choices|join:", " }}.</p>
+{% else %}
+<p class="unavailable">Data unavailable for this analysis. {{ s.recommendation.reason }}</p>
+{% endif %}
+
+{% if s.candidates %}
+<h3>Comparison of candidate businesses</h3>
+<table>
+  <thead><tr><th>Business</th><th>Why it is listed</th><th class="num">Potential score</th><th class="num">Est. gross sales / month</th><th class="num">Matched competitors</th><th>Feasibility rules</th></tr></thead>
+  <tbody>
+  {% for c in s.candidates %}
+    <tr>
+      <td><strong>{{ c.business }}</strong>{% if c.uses_default_assumptions %} *{% endif %}</td>
+      <td class="small">{{ c.source }}</td>
+      <td class="num">{% if c.potential_score is not None %}{{ c.potential_score }}/100{% else %}—{% endif %}</td>
+      <td class="num">{% if c.monthly_revenue is not None %}{{ c.monthly_revenue|inr }}{% else %}—{% endif %}</td>
+      <td class="num">{{ c.competitors }}</td>
+      <td>{% if c.feasible is True %}<span class="pill pill-yes">Feasible</span>{% elif c.feasible is False %}<span class="pill pill-no">Not feasible</span>{% else %}—{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small muted">* The revenue engine has no specific parameters for this category and used its generic defaults (average spend ₹600, 5% conversion), so its figures are especially rough. <strong>Potential score</strong> is the revenue engine's 0–100 index: accessibility 25%, attraction of nearby places 20%, demand/supply balance 20%, estimated market share 20%, variety of places 15%. It is a relative indicator, not a probability of success. Sales are gross estimates from the same engine; see Section 6.</p>
+
+{% if charts.candidates %}
+<figure>
+  <img class="chart" src="{{ charts.candidates }}" alt="Candidate comparison chart">
+  <figcaption>Figure 4.1 – Potential score and estimated monthly gross sales for each candidate, from the platform's revenue engine. <span class="tag tag-estimate">Estimate</span></figcaption>
+</figure>
+{% endif %}
+{% endif %}
+
+<h3>Why each business appears {% include "reports/sections/_src.html" with st=t.heatmap_recs %}</h3>
+{% for r in t.heatmap_recs.data.recommendations %}
+<div class="step">
+  <h4>{{ r.business }}</h4>
+  <p>{{ r.why }}</p>
+  <div class="grid">
+    <div><strong>Strengths</strong><ul>{% for x in r.strengths %}<li>{{ x }}</li>{% endfor %}</ul></div>
+    <div><strong>Weaknesses</strong><ul>{% for x in r.weaknesses %}<li>{{ x }}</li>{% endfor %}</ul></div>
+    <div><strong>How to validate</strong><ul>{% for x in r.validation_steps %}<li>{{ x }}</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% empty %}
+<p class="unavailable">Data unavailable for this analysis.</p>
+{% endfor %}
+
+<p class="small"><strong>Missing information.</strong> The platform does not know local incomes, rents, customer preferences or how busy existing businesses are. A recommendation here means "fits the platform's rules for this kind of area", not "will succeed".</p>
+
+<h3>How the recommendation is produced</h3>
+<figure class="flow">{{ flows.recommendation|safe }}
+  <figcaption>Flowchart B – The recommendation logic as implemented (business_intelligence/analysis.py), with this location's values in grey.</figcaption>
+</figure>

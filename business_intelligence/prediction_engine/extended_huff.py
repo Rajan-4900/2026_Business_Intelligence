@@ -12,6 +12,7 @@ from .config import (
     BUSINESS_METRICS
 )
 from .data_classes import ExtendedHuffMetrics
+from .huff_layer import is_competitor
 
 class ExtendedHuffModel:
     """Implements benchmarking adjustments and corrections for retail network performance."""
@@ -30,15 +31,7 @@ class ExtendedHuffModel:
             if not poi_type:
                 continue
                 
-            is_comp = False
-            if self.business_type == 'default':
-                is_comp = False
-            elif poi_type == self.business_type:
-                is_comp = True
-            elif self.business_type in poi_type or poi_type in self.business_type:
-                is_comp = True
-                
-            if is_comp:
+            if is_competitor(poi_type, self.business_type):
                 count += 1
         return count
 

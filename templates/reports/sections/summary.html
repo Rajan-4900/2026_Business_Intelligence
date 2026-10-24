@@ -1,0 +1,43 @@
+{% load report_tags %}
+<h2 class="section" id="sec-summary"><span class="num">1</span>&nbsp;Executive summary</h2>
+
+<div class="kpis">
+  {% for k in kpis %}
+  <div class="kpi">
+    <div class="label">{{ k.label }}</div>
+    <div class="value">{{ k.value }}</div>
+    <div class="note"><span class="tag tag-{{ k.kind }}">{{ k.kind_label }}</span> {{ k.note }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<h3>Summary {% include "reports/sections/_src.html" with st=t.summary %}</h3>
+<p>{{ t.summary.data.executive_summary }}</p>
+
+<div class="two-col">
+  <div>
+    <h4>Main advantages</h4>
+    <ul>{% for x in t.summary.data.key_advantages %}<li>{{ x }}</li>{% endfor %}</ul>
+  </div>
+  <div>
+    <h4>Main risks</h4>
+    <ul>{% for x in t.summary.data.key_risks %}<li>{{ x }}</li>{% endfor %}</ul>
+  </div>
+</div>
+
+{% if s.revenue.status == 'ok' and s.revenue.scenarios %}
+<div class="callout">
+  <strong>Estimated gross sales per month</strong> <span class="tag tag-estimate">Estimate</span><br>
+  Conservative {{ s.revenue.scenarios.conservative|inr }} · Base {{ s.revenue.scenarios.base|inr }} · Optimistic {{ s.revenue.scenarios.optimistic|inr }}<br>
+  <span class="small">Sales before any costs, for: {{ s.revenue.business_type|nice }}. Profit cannot be calculated from the available data.</span>
+</div>
+{% endif %}
+
+<h4>Recommended next steps</h4>
+<ol>{% for x in t.summary.data.next_steps %}<li>{{ x }}</li>{% endfor %}</ol>
+
+{% if s.missing %}
+<div class="note-box"><strong>Missing information.</strong>
+  <ul class="small">{% for m in s.missing %}<li><strong>{{ m.item }}:</strong> {{ m.reason }}</li>{% endfor %}</ul>
+</div>
+{% endif %}

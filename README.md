@@ -70,6 +70,19 @@ Data is sourced live from **OpenStreetMap** (Nominatim geocoding + Overpass API)
 - **Active Session & Device Management**: View active sessions with device names/IPs and revoke any session remotely.
 - **Security Audit Logs**: Automated logging of logins, password resets, and 2FA events.
 
+### Favorites & Popular Picks
+- Signed-in users tap the heart on any Popular Places card to save it; `/favorites/` lists saved places and recommends new ones.
+- Stored in Supabase (`public.favorite_places`) with Row Level Security; Django forwards the user's own token, so ownership is enforced by Supabase.
+- Recommendations (`favorites/recommender.py`) blend time-decayed popularity across all users, the user's category taste, distance, and the revenue engine's location score.
+- **Setup:** run [`supabase/favorites.sql`](supabase/favorites.sql) and [`supabase/user_history.sql`](supabase/user_history.sql) (per-user history of searches, analyses and inquiries) in the Supabase SQL Editor. Also run [`supabase/security_fixes.sql`](supabase/security_fixes.sql), which stops the public anon key from reading profile emails and activity logs.
+
+### AI-Powered Business Intelligence Report (PDF)
+- **Generate Detailed Report** on the dashboard map, or ask the chatbot (*"Generate a comprehensive PDF report for this location."*), produces a 20–25 page A4 PDF for the selected location.
+- Contents: executive summary with KPI cards, location overview, the **actual heatmap screenshot** captured from the live map, ML recommendations compared with revenue-engine scores, competitors, revenue scenarios, Go/No-Go feasibility, a business-specific roadmap, a risk matrix, final recommendations and an investment checklist, plus 5 rendered flowcharts and up to 9 charts.
+- All figures come from the existing engines, rerun on the server. Gemini writes only the explanations, which are schema-checked and rejected if they contain figures that are not in the data; otherwise template text is used and labelled as such.
+- Every figure is tagged *Observed*, *Estimate*, *AI text*, *Your input* or *Missing*. Missing data is shown as "Data unavailable for this analysis.", never filled in.
+- Reports are private (Supabase user id), expire after 24 h, and need `brew install pango` / `libpango` for WeasyPrint. See [docs/REPORT_GENERATION.md](docs/REPORT_GENERATION.md).
+
 ### Interactive Dashboard
 - Analytics UI with live revenue animation, business intelligence panel, 4×4 popular places flashcard matrix, and feasibility evaluation.
 - WebSocket-powered chatbot for real-time AI assistance across all pages.
@@ -168,7 +181,16 @@ Business_Intelligence-main/
 │   ├── forms.py                 # CustomUserCreationForm, AuthenticationForm, 2FA forms
 │   └── urls.py                  # Auth URL routing
 │
-├── templates/                   # HTML templates
+├── report_generator/            # PDF report generator (data collection, charts, flowcharts, Gemini text, WeasyPrint)
+│   ├── services.py              # Shared pipeline for dashboard + chatbot, background thread, stages
+│   ├── data_collector.py        # Runs the existing analysis engines for one location
+│   ├── ai_writer.py / prompts.py  # Gemini stages with schema + figure validation and fallbacks
+│   ├── chart_generator.py       # Matplotlib charts from real analysis values
+│   ├── flowchart_generator.py   # Inline-SVG flowcharts
+│   ├── pdf_generator.py         # WeasyPrint rendering with a locked URL fetcher
+│   └── tests/                   # Validators, data, AI, PDF, API/security, chatbot tests
+│
+├── templates/                   # HTML templates (reports/ holds the PDF templates)
 │   ├── heatmap_app/             # Home, dashboard, contact pages
 │   ├── users/                   # Authentication & Security Center templates
 │   └── base.html                # Global base layout & floating assistant
@@ -256,6 +278,13 @@ python -m venv .venv
 
 ```bash
 pip install -r requirements.txt
+```
+
+PDF reports use WeasyPrint, which needs the Pango system library:
+
+```bash
+brew install pango                                   # macOS
+sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0  # Debian/Ubuntu
 ```
 
 #### 4. Configure Environment Variables
@@ -422,6 +451,11 @@ CREATE TABLE IF NOT EXISTS django_session (
 | `EMAIL_USE_TLS` | No | `True` | Enable TLS encryption |
 | `EMAIL_HOST_USER` | No | None | SMTP username / email address |
 | `EMAIL_HOST_PASSWORD` | No | None | SMTP password / app-specific password |
+| `REPORT_RETENTION_HOURS` | No | `24` | How long generated PDF reports are kept |
+| `REPORT_MAX_PER_HOUR` | No | `10` | PDF reports per user per hour |
+| `REPORT_MAX_CONCURRENT` | No | `2` | PDF reports generated at once |
+| `REPORT_AI_ENABLED` | No | `True` | Use Gemini for report explanations (template text otherwise) |
+| `REPORT_AI_TIMEOUT` | No | `25` | Seconds per Gemini report stage |
 
 ---
 
@@ -433,6 +467,13 @@ Run the full automated test suite:
 ./run.sh test
 # or: python3 run.py test
 # or: make test
+```
+
+Frontend tests for the report generator (jsdom):
+
+```bash
+npm install
+npm run test:js
 ```
 
 ---
@@ -478,6 +519,9 @@ daphne -b 0.0.0.0 -p 8000 crowd_heatmap_project.asgi:application
 | POST | `/contact/` | Contact message submission |
 | GET | `/accounts/security/` | Security Center (2FA, Sessions, Audit logs) |
 | WS | `/ws/chat/` | WebSocket chatbot (Gemini assistant) |
+| POST | `/api/reports/generate/` | Start a PDF report for the selected location (Supabase bearer token + CSRF) |
+| GET | `/api/reports/<id>/status/` | Report generation stages and status (owner only) |
+| GET | `/api/reports/<id>/download/` | Download the finished PDF (owner only) |
 
 ---
 
@@ -558,6 +602,7 @@ The repository includes ready-to-use deployment configuration for **Render**, **
 | [Revenue Structure Report](docs/REVENUE_STRUCTURE_REPORT.md) | In-depth revenue engine mathematical equations |
 | [Map Debug Checklist](docs/MAP_DEBUG_CHECKLIST.md) | Troubleshooting map & Leaflet issues |
 | [Static Testing](docs/STATIC_TESTING.md) | Static file testing guide |
+| [Report Generation](docs/REPORT_GENERATION.md) | PDF report architecture, data flow, API, security, troubleshooting |
 
 ---
 

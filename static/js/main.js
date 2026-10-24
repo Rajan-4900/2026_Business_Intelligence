@@ -932,6 +932,7 @@ function renderPopularPlacesFlashcards(places) {
                     <span class="place-type">${type}</span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
+                    ${window.Favorites ? Favorites.heartHtml(Favorites.fromOverpass(place)) : ''}
                     <span class="place-rank-badge">#${index + 1}</span>
                     <span class="place-rating"><i class="fas fa-star text-warning"></i> ${rating}</span>
                     <span class="place-distance badge bg-dark border border-secondary">${distance}</span>
@@ -990,6 +991,7 @@ function renderPopularPlacesFlashcards(places) {
     });
 
     container.innerHTML = html;
+    if (window.Favorites) Favorites.refresh();
 
     // Keep panel hidden until user explicitly requests Popular Places.
     if (popularPlacesPanelRequested) {
@@ -1741,7 +1743,10 @@ function createBusinessCard(place, type, index, fallbackLat, fallbackLon) {
         <div class="business-card">
             <div class="business-card-header d-flex justify-content-between align-items-center">
                 <span class="business-name">${name}</span>
-                ${headerBadge}
+                <span class="d-flex align-items-center gap-2">
+                    ${headerBadge}
+                    ${window.Favorites ? Favorites.heartHtml(Favorites.fromOverpass(place)) : ''}
+                </span>
             </div>
             
             <div class="business-location-row">
@@ -1886,6 +1891,7 @@ function renderPopularPlacesTable(places, lat, lon) {
         col.innerHTML = createBusinessCard(place, 'popular', index, lat, lon);
         popularPlacesList.appendChild(col);
     });
+    if (window.Favorites) Favorites.refresh();
 
     if (popularPlacesPanelRequested) {
         if (popularPlacesPanel.classList.contains('d-none')) {
@@ -1936,6 +1942,7 @@ function renderBusinessRecommendationCards(places, lat, lon) {
         col.innerHTML = createBusinessCard(place, 'recommended', index, lat, lon);
         row.appendChild(col);
     });
+    if (window.Favorites) Favorites.refresh();
 }
 
 // Default center when no location selected (Bangalore)
@@ -1990,6 +1997,7 @@ function connectChatbot() {
         const actions = data.structured_actions;
 
         addChatMessage(message, 'bot', actions);
+        runAutoChatActions(actions);
 
         // Allow the bot to control the map by parsing its response for commands
         const result = handleChatCommand(message);
@@ -2099,7 +2107,18 @@ function handleStructuredChatAction(action) {
         if (typeof findPopularPlaces === 'function') {
             findPopularPlaces();
         }
+    } else if (intent === 'generate_report') {
+        if (window.ReportGenerator) window.ReportGenerator.start({ source: 'chat' });
+    } else if (intent === 'download_report') {
+        if (window.ReportGenerator && action.report_id) window.ReportGenerator.download(action.report_id);
     }
+}
+
+// Run actions the server marked auto_run (currently only report generation the user asked for).
+function runAutoChatActions(actions) {
+    (actions || []).forEach(act => {
+        if (act && act.auto_run === true && act.intent === 'generate_report') handleStructuredChatAction(act);
+    });
 }
 
 function showTypingIndicator() {
@@ -2297,6 +2316,12 @@ async function runFeasibilityFlow(placeText, businessType) {
 function handleChatCommand(message) {
     const lower = message.toLowerCase().trim();
     const trimmed = message.trim();
+
+    // Report requests ("give me a business feasibility report") go to the server,
+    // which starts the report flow; don't also treat them as map commands.
+    if (window.ReportGenerator && window.ReportGenerator.looksLikeReportRequest(trimmed)) {
+        return { handled: false };
+    }
 
     if (/\b(help|commands|what can you do|how to use|assist me)\b/i.test(lower)) {
         return {
@@ -2532,6 +2557,7 @@ function sendChatMessage() {
             hideTypingIndicator();
             if (data.success && data.message) {
                 addChatMessage(data.message, 'bot', data.structured_actions);
+                runAutoChatActions(data.structured_actions);
             } else {
                 addChatMessage('Sorry, I could not respond right now. Please try again.', 'bot');
             }
@@ -3467,6 +3493,18 @@ async function updateCrowdIntensityDropdown(lat, lon) {
 
             // Cache raw intensity data so the chatbot can later highlight
             // zones for a user-chosen crowd level.
+            // Which location the heatmap on screen belongs to (used by the PDF report capture).
+            window.lastHeatmapAnalysis = {
+                lat: Number(lat),
+                lon: Number(lon),
+                counts: {
+                    high: (data.high_intensity || []).length,
+                    medium: (data.medium_intensity || []).length,
+                    low: (data.low_intensity || []).length,
+                },
+                ts: Date.now(),
+            };
+
             lastCrowdIntensityData = {
                 high: data.high_intensity || [],
                 medium: data.medium_intensity || [],
@@ -3833,6 +3871,10 @@ let dashboardMap = null;
 
 function initDashboardInteractions() {
     const showMapBtn = document.getElementById('btn-show-map');
+    const backToDashboardBtn = document.getElementById('btn-back-to-dashboard');
+    const launchpad = document.getElementById('dashboard-launchpad');
+    const dynamicMapContainer = document.getElementById('dynamic-map-container');
+
     if (showMapBtn) {
         showMapBtn.addEventListener('click', () => {
             const openMap = () => {
@@ -4191,7 +4233,8 @@ function initDynamicDashboardMap() {
     dashboardMap = L.map('dashboard-map').setView([51.505, -0.09], 13);
     L.tileLayer('https://api.maptiler.com/maps/basic-v2/{z}/{x}/{y}.png?key=SJwCksU5oVIkLOgs9ElB', {
         attribution: '\u003ca href="https://www.maptiler.com/copyright/" target="_blank"\u003e\u0026copy; MapTiler\u003c/a\u003e \u003ca href="https://www.openstreetmap.org/copyright" target="_blank"\u003e\u0026copy; OpenStreetMap contributors\u003c/a\u003e',
-        maxZoom: 19
+        maxZoom: 19,
+        crossOrigin: true  // MapTiler sends CORS headers; lets the PDF report capture the map
     }).addTo(dashboardMap);
 
     // Sync with global 'map' variable for compatibility with existing search/location functions

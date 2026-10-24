@@ -1,0 +1,29 @@
+{% load report_tags %}
+<h2 class="section" id="sec-roadmap"><span class="num">8</span>&nbsp;Implementation roadmap</h2>
+
+<p>A step-by-step plan for opening the business <strong>{{ meta.business|default:"selected" }}</strong> ({{ group_label }} category) at this location. {% include "reports/sections/_src.html" with st=t.roadmap %}</p>
+<div class="note-box small">Durations are <strong>planning estimates</strong>, not commitments. Licences, fees and legal requirements named below are things to <strong>verify</strong> with the relevant authority; this report does not confirm them.</div>
+
+<figure class="flow">{{ flows.implementation|safe }}
+  <figcaption>Flowchart C – Recommended process for moving from this analysis to an opening. This is guidance, not an automated platform step.</figcaption>
+</figure>
+
+{% if charts.timeline %}
+<figure>
+  <img class="chart" src="{{ charts.timeline }}" alt="Implementation timeline">
+  <figcaption>Figure 8.1 – Indicative timeline if steps run one after another (planning estimate). The final monitoring step continues after opening.</figcaption>
+</figure>
+{% endif %}
+
+{% for step in t.roadmap.data.steps %}
+<div class="step">
+  <h4>{{ forloop.counter }}. {{ step.title }} <span class="muted small">· about {{ step.weeks }} week{{ step.weeks|pluralize }} (estimate)</span></h4>
+  <p><strong>Objective:</strong> {{ step.objective }}</p>
+  <div class="grid">
+    <div><strong>Actions</strong><ul>{% for a in step.actions %}<li>{{ a }}</li>{% endfor %}</ul></div>
+    <div><strong>Evidence to collect</strong><ul>{% for e in step.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+      <strong>Expected outcome</strong><p>{{ step.outcome }}</p></div>
+    <div><strong>Dependencies / risks</strong><p>{{ step.risks }}</p></div>
+  </div>
+</div>
+{% endfor %}

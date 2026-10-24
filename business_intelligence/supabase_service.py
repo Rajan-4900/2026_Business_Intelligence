@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS public.user_activity_logs (
 -- Enable RLS and allow insert / select
 ALTER TABLE public.user_activity_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow anon insert" ON public.user_activity_logs FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow select" ON public.user_activity_logs FOR SELECT USING (true);
+CREATE POLICY "Users read own activity" ON public.user_activity_logs
+    FOR SELECT TO authenticated USING (auth.uid()::text = user_id);
 """
 
 _supabase_client = None
@@ -61,7 +62,9 @@ def log_activity_to_supabase(event_type, feature_name=None, user_id=None, user_e
     }
 
     try:
-        response = client.table('user_activity_logs').insert(payload).execute()
+        # 'minimal' = don't read the row back; SELECT on this table is restricted
+        # to the row's owner (see supabase/security_fixes.sql).
+        response = client.table('user_activity_logs').insert(payload, returning='minimal').execute()
         return {'success': True, 'data': response.data if hasattr(response, 'data') else None}
     except Exception as e:
         err_msg = str(e)

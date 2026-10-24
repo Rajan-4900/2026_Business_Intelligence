@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Favorites | Business Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+    .fav-page { padding: 48px 20px; position: relative; z-index: 2; }
+    .fav-wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+    .fav-section { background: rgba(13,17,23,.85); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.08);
+                   border-radius: 20px; padding: 24px 28px; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+    .fav-section h2 { font-size: 1.15rem; margin: 0; color: #f1f5f9; display: flex; align-items: center; gap: 10px; }
+    .fav-section .sub { color: #94a3b8; font-size: .85rem; margin: 4px 0 18px; }
+    .fav-badge { background: rgba(244,63,94,.15); color: #fb7185; border-radius: 999px; padding: 2px 10px; font-size: .8rem; }
+    .fav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+    .fav-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
+                padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: border-color .2s, transform .2s; }
+    .fav-card:hover { border-color: rgba(251,113,133,.4); transform: translateY(-2px); }
+    .fav-card.rec:hover { border-color: rgba(56,189,248,.4); }
+    .fav-card h3 { font-size: 1rem; margin: 0; color: #f1f5f9; word-break: break-word; }
+    .fav-card-top { display: flex; justify-content: space-between; align-items: center; min-height: 28px; }
+    .fav-cat { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+    .fav-score { font-size: .75rem; color: #38bdf8; font-weight: 600; }
+    .fav-addr { color: #94a3b8; font-size: .8rem; margin: 0; }
+    .fav-reasons { margin: 0; padding-left: 18px; color: #cbd5e1; font-size: .8rem; }
+    .fav-actions { display: flex; gap: 14px; margin-top: auto; padding-top: 6px; font-size: .8rem; }
+    .fav-actions a { color: #38bdf8; text-decoration: none; }
+    .fav-remove { background: none; border: 0; color: #f87171; padding: 0; cursor: pointer; font-size: .8rem; }
+    .fav-remove:disabled { opacity: .5; }
+    .fav-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .fav-chip { background: rgba(255,255,255,.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,.1);
+                border-radius: 999px; padding: 4px 14px; font-size: .8rem; cursor: pointer; text-transform: capitalize; }
+    .fav-chip.on { background: rgba(244,63,94,.18); border-color: #fb7185; color: #fda4af; }
+    .fav-empty { grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 28px 12px; }
+    .fav-empty i { font-size: 2rem; color: #475569; margin-bottom: 8px; }
+    .fav-gate { text-align: center; padding: 48px 24px; }
+    .fav-gate i { font-size: 2.4rem; color: #fb7185; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fav-page" id="favorites-page">
+    <div class="fav-wrap">
+        <div id="fav-gate" class="fav-section fav-gate d-none">
+            <i class="fas fa-heart"></i>
+            <h2 class="justify-content-center">Sign in to see your favorites</h2>
+            <p class="sub">Save places you love and get picks tailored to you.</p>
+            <a class="btn btn-primary-blue" href="{% url 'login' %}?next={{ request.path }}">Sign In</a>
+        </div>
+
+        <div id="fav-content" class="d-none" style="display:flex; flex-direction:column; gap:32px;">
+            <section class="fav-section">
+                <h2><i class="fas fa-heart text-danger"></i> My Favorites <span class="fav-badge" id="fav-count">0</span></h2>
+                <p class="sub">Places you've saved from the heatmap and Popular Places.</p>
+                <div id="fav-chips" class="fav-chips"></div>
+                <div id="fav-list" class="fav-grid"></div>
+            </section>
+
+            <section class="fav-section">
+                <h2><i class="fas fa-wand-magic-sparkles text-info"></i> Recommended for you</h2>
+                <p class="sub" id="rec-sub">Loading picks…</p>
+                <div id="rec-list" class="fav-grid"></div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% load report_tags %}
+<h2 class="section" id="sec-competition"><span class="num">5</span>&nbsp;Competition and market</h2>
+
+{% if s.competition.status == 'ok' %}
+<p>Competitors are mapped places whose OpenStreetMap category matches <strong>{{ s.competition.business_type }}</strong> (the same rule the revenue engine uses). They are <em>mapped</em> places: some may have closed, and similar businesses tagged differently will be missed.</p>
+<div class="kpis">
+  <div class="kpi"><div class="label">Matched within {{ s.location.radius_m }} m</div><div class="value">{{ s.competition.count }}</div><div class="note"><span class="tag tag-observed">Observed</span></div></div>
+  <div class="kpi"><div class="label">Within 500 m</div><div class="value">{{ s.competition.within_500_m }}</div><div class="note"><span class="tag tag-observed">Observed</span></div></div>
+  <div class="kpi"><div class="label">Nearest</div><div class="value">{% if s.competition.nearest_m is not None %}{{ s.competition.nearest_m }} m{% else %}None found{% endif %}</div><div class="note"><span class="tag tag-observed">Observed</span> straight-line distance</div></div>
+</div>
+{% if s.competition.count == 0 %}
+<div class="note-box">No mapped place matched this category. That can mean an unserved niche, but often means similar places are tagged under a different OpenStreetMap name. Check the area in person before treating it as a gap.</div>
+{% endif %}
+{% if charts.competitor_distance %}
+<figure>
+  <img class="chart" src="{{ charts.competitor_distance }}" alt="Competitor distances">
+  <figcaption>Figure 5.1 – Matched competitors by straight-line distance from the selected location. <span class="tag tag-observed">Observed</span></figcaption>
+</figure>
+{% endif %}
+{% if s.competition.list %}
+<h4>Nearest matched places</h4>
+<table>
+  <thead><tr><th>Name</th><th>Mapped type</th><th class="num">Distance</th></tr></thead>
+  <tbody>{% for c in s.competition.list %}<tr><td>{{ c.name }}</td><td>{{ c.type }}</td><td class="num">{{ c.distance_m }} m</td></tr>{% endfor %}</tbody>
+</table>
+{% if s.competition.count > s.competition.list|length %}<p class="small muted">Showing the nearest {{ s.competition.list|length }} of {{ s.competition.count }}.</p>{% endif %}
+{% endif %}
+{% else %}
+<p class="unavailable">Data unavailable for this analysis. {{ s.competition.reason }}</p>
+{% endif %}
+
+<h3>Demand and accessibility indicators</h3>
+{% if s.revenue.breakdown %}
+<p>These are the revenue engine's scores, calculated from mapped features weighted by distance. They are geographic indicators of possible demand, not measurements of it. <span class="tag tag-estimate">Estimate</span></p>
+<table>
+  <thead><tr><th>Indicator</th><th class="num">Value</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td>Accessibility</td><td class="num">{{ s.revenue.breakdown.accessibility_score|floatformat:0 }}/100</td><td class="small">Transit stops, footpaths and parking nearby</td></tr>
+    <tr><td>Transit</td><td class="num">{{ s.revenue.breakdown.transit_score|floatformat:0 }}/100</td><td class="small">Bus stops, stations and similar</td></tr>
+    <tr><td>Walkability</td><td class="num">{{ s.revenue.breakdown.walkability_score|floatformat:0 }}/100</td><td class="small">Footpaths and intersections</td></tr>
+    <tr><td>Attraction of nearby places</td><td class="num">{{ s.revenue.breakdown.attraction_score|floatformat:0 }}/100</td><td class="small">Shops, markets, hotels and tourism</td></tr>
+    <tr><td>Competition</td><td class="num">{{ s.revenue.breakdown.competition_score|floatformat:0 }}/100</td><td class="small">Same-category places, weighted by distance</td></tr>
+    <tr><td>Demand/supply ratio</td><td class="num">{{ s.revenue.breakdown.demand_supply_ratio|floatformat:2 }}</td><td class="small">Homes, offices and schools relative to businesses</td></tr>
+    <tr><td>Variety of places</td><td class="num">{{ s.revenue.breakdown.diversity_score|floatformat:0 }}/100</td><td class="small">How mixed the nearby place types are</td></tr>
+  </tbody>
+</table>
+{% else %}
+<p class="unavailable">Data unavailable for this analysis.</p>
+{% endif %}
+<p class="small muted">Market size, local incomes and competitors' sales are not available to the platform and are not estimated in this report.</p>

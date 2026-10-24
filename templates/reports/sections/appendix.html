@@ -1,0 +1,50 @@
+{% load report_tags %}
+<h2 class="section" id="sec-appendix"><span class="num">A</span>&nbsp;Sources, assumptions and limitations</h2>
+
+<h3>Report details</h3>
+<table>
+  <tbody>
+    <tr><th style="width:48mm">Report generated</th><td>{{ meta.generated_at_local }} ({{ meta.generated_at_utc }} UTC)</td></tr>
+    <tr><th>Analysis data collected</th><td>{{ meta.collected_at_local }}</td></tr>
+    <tr><th>Location</th><td>{{ s.location.name }} – {{ s.location.latitude|floatformat:6 }}, {{ s.location.longitude|floatformat:6 }}</td></tr>
+    <tr><th>Radius</th><td>{{ s.location.radius_m }} m, used throughout the report</td></tr>
+    <tr><th>Heatmap screenshot</th><td>{% if heatmap_image %}Captured in the browser for the same location ({{ capture.offset_m|floatformat:0 }} m from the selected point){% else %}Not available – reconstruction used{% endif %}</td></tr>
+    <tr><th>Explanatory text</th><td>{{ meta.ai_message }}</td></tr>
+    <tr><th>Reference</th><td>{{ meta.reference }}</td></tr>
+  </tbody>
+</table>
+
+<h3>Data sources</h3>
+<table>
+  <thead><tr><th>Source</th><th>Details</th><th>Retrieved</th></tr></thead>
+  <tbody>
+  {% for src in s.sources %}<tr><td>{{ src.name }}</td><td class="small">{{ src.detail }}. {{ src.note }}</td><td class="small">{{ src.retrieved_at }}</td></tr>{% endfor %}
+    <tr><td>ML business model</td><td class="small">scikit-learn decision tree trained on crowd_heatmap_project/business_dataset.csv ({{ model_rows }} rows)</td><td class="small">Bundled with the platform</td></tr>
+    <tr><td>Revenue engine</td><td class="small">Extended Huff spatial model (business_intelligence/prediction_engine), parameters in its config.py</td><td class="small">Bundled with the platform</td></tr>
+  </tbody>
+</table>
+
+<h3>Model assumptions</h3>
+<ul class="small">
+  <li>Heatmap thresholds: High ≥ 15, Medium 5–14, Low 1–4 mapped features per sector; 3 rings of {{ ring_width }} m × 3 wedges of 120°.</li>
+  {% if s.revenue.status == 'ok' %}
+  <li>Revenue engine for "{{ s.revenue.business_type }}": average spend {{ s.revenue.assumptions.avg_spend|inr }}, conversion {{ s.revenue.assumptions.conversion_rate|pct }}, ideal {{ s.revenue.assumptions.optimal_daily_customers.0 }}–{{ s.revenue.assumptions.optimal_daily_customers.1 }} customers per day{% if s.revenue.uses_default_assumptions %} (generic defaults – no category-specific values){% endif %}.</li>
+  <li>Monthly = daily × 30; annual = daily × 365. The scenario range is ±10% to ±40% depending on the engine's confidence score.</li>
+  {% endif %}
+  <li>Distances are straight-line (not walking or driving).</li>
+</ul>
+
+<h3>Limitations</h3>
+<ul class="small">
+  <li>No pedestrian footfall, sales, rent, cost or income data is available. Map features stand in for activity.</li>
+  <li>OpenStreetMap coverage varies; missing or outdated entries change every count in this report.</li>
+  <li>The ML model is small (72 examples) and has not been validated against real business outcomes.</li>
+  <li>Competitor matching relies on category names and misses differently tagged places.</li>
+  <li>Revenue figures are gross sales estimates. They are not profit and not guaranteed.</li>
+  <li>AI-written text was checked automatically for figures not in the data, but you should still read it critically.</li>
+</ul>
+
+{% if s.missing %}
+<h3>Data that was unavailable</h3>
+<ul class="small">{% for m in s.missing %}<li><span class="tag tag-missing">Missing</span> <strong>{{ m.item }}</strong>: {{ m.reason }}</li>{% endfor %}</ul>
+{% endif %}
