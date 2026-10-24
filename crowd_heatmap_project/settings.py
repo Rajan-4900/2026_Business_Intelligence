@@ -41,7 +41,7 @@ if not DEBUG:
 
 ALLOWED_HOSTS = ['*'] # Allowed all hosts for Railway/Render
 
-# CSRF trusted origins for development
+# CSRF trusted origins for development and production
 CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8001',
     'http://localhost:8001',
@@ -51,7 +51,13 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.onrender.com',
     'https://*.railway.app',
     'https://*.up.railway.app',
+    'https://*.vercel.app',
 ]
+
+# Allow custom frontend URL if provided
+custom_frontend = os.environ.get('FRONTEND_URL')
+if custom_frontend and custom_frontend not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(custom_frontend)
 
 
 # Application definition
