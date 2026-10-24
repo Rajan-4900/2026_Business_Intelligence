@@ -1,0 +1,19 @@
+# Ignore backend Python files so Vercel doesn't build a 700MB Lambda
+requirements.txt
+manage.py
+crowd_heatmap_project/
+business_intelligence/
+tracker/
+users/
+report_generator/
+db.sqlite3
+venv/
+.venv/
+Dockerfile
+render.yaml
+build.sh
+run.py
+run.sh
+run.bat
+run.ps1
+Makefile
