@@ -162,3 +162,70 @@ def recommendations(request):
         return _store_error(exc)
     picks = recommender.recommend(mine, community, lat=lat, lon=lon, limit=limit)
     return JsonResponse({'success': True, 'personalized': bool(mine), 'recommendations': picks})
+
+
+@bearer_token_required
+@require_http_methods(['GET'])
+def export_favorites_report(request):
+    """Generate and download a comprehensive PDF report of all user's favorite/marked places."""
+    import io
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    try:
+        favs = store.list_favorites(request.sb_token)
+    except store.StoreError as exc:
+        return _store_error(exc)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle('FavTitle', parent=styles['Heading1'], fontSize=18, leading=22, textColor=colors.HexColor('#0f172a'))
+    body_style = ParagraphStyle('FavBody', parent=styles['Normal'], fontSize=9, leading=13, textColor=colors.HexColor('#334155'))
+
+    story = [
+        Paragraph("Favorites & Saved Locations Summary Report", title_style),
+        Paragraph(f"Total Places Marked & Saved: {len(favs)}", body_style),
+        Spacer(1, 14)
+    ]
+
+    if not favs:
+        story.append(Paragraph("No favorite places saved yet. Explore the map or Popular Places to mark and save locations.", body_style))
+    else:
+        table_data = [["Name", "Category", "Potential", "Coordinates", "Address"]]
+        for f in favs:
+            score = f"{f.get('potential_score')}/100" if f.get('potential_score') is not None else "N/A"
+            lat = f.get('latitude', 0)
+            lon = f.get('longitude', 0)
+            coords = f"{lat:.4f}, {lon:.4f}" if isinstance(lat, (int, float)) and isinstance(lon, (int, float)) else "N/A"
+            table_data.append([
+                str(f.get('name', 'Place'))[:32],
+                str(f.get('category', 'Generic'))[:20],
+                score,
+                coords,
+                str(f.get('address', '') or 'N/A')[:32]
+            ])
+        t = Table(table_data, colWidths=[150, 90, 60, 110, 110])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e293b')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ]))
+        story.append(t)
+
+    doc.build(story)
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="favorites-summary-report.pdf"'
+    response['Cache-Control'] = 'no-store, private'
+    return response
+

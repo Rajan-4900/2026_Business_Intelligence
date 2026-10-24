@@ -193,6 +193,97 @@
         }
     }
 
+    function reportCard(r) {
+        const dateStr = r.created_at || 'Recently';
+        const pagesStr = r.page_count ? `${r.page_count} pages` : 'Ready';
+        const isReady = r.status === 'succeeded' && r.has_pdf;
+        return `<article class="fav-card">
+            <div class="fav-card-top">
+                <span class="fav-cat text-primary"><i class="fas fa-file-pdf me-1"></i>Report</span>
+                <span class="badge ${isReady ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'} border font-monospace" style="font-size:0.7rem;">${isReady ? pagesStr : r.status}</span>
+            </div>
+            <h3>${esc(r.location_name)}</h3>
+            <p class="fav-addr"><i class="fas fa-clock me-1 opacity-75"></i>${esc(dateStr)}</p>
+            <div class="fav-actions mt-auto pt-2">
+                ${isReady ? `<button type="button" class="btn btn-primary-blue btn-sm w-100 download-report-btn" data-id="${r.id}"><i class="fas fa-download me-1"></i>Download PDF</button>` : `<span class="text-muted small">${esc(r.status)}</span>`}
+            </div>
+        </article>`;
+    }
+
+    async function renderReports() {
+        const box = $('reports-list');
+        if (!box) return;
+        try {
+            const data = await api('/api/reports/');
+            const reports = Array.isArray(data.reports) ? data.reports : [];
+            const countEl = $('reports-count');
+            if (countEl) countEl.textContent = reports.length;
+            box.innerHTML = reports.length ? reports.map(reportCard).join('')
+                : `<div class="fav-empty"><i class="far fa-file-pdf"></i><p>No reports generated yet. Click "Full Detailed Report" on the map or Popular Places to create and store one here.</p>
+                   <a class="btn btn-primary-blue btn-sm" href="/dashboard/?auto_map=true">Generate on Map</a></div>`;
+        } catch (e) {
+            box.innerHTML = `<div class="fav-empty"><p>${esc(e.message)}</p></div>`;
+        }
+    }
+
+    async function downloadReportPdf(reportId) {
+        const session = window.SupabaseAuth ? await window.SupabaseAuth.getSession() : null;
+        if (!session) { toast('Please sign in to download reports', 'error'); return; }
+        try {
+            const res = await fetch(`/api/reports/${reportId}/download/`, {
+                headers: { 'Authorization': 'Bearer ' + session.access_token }
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                toast(data.error || 'Download failed', 'error');
+                return;
+            }
+            const blob = await res.blob();
+            const disposition = res.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="([^"]+)"/);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = match ? match[1] : 'business-report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch (err) {
+            toast(err.message, 'error');
+        }
+    }
+
+    async function downloadFavoritesReportPdf() {
+        const session = window.SupabaseAuth ? await window.SupabaseAuth.getSession() : null;
+        if (!session) { toast('Please sign in to download favorites report', 'error'); return; }
+        const btn = $('btn-download-favs-report');
+        if (btn) btn.disabled = true;
+        try {
+            const res = await fetch('/api/favorites/report/', {
+                headers: { 'Authorization': 'Bearer ' + session.access_token }
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                toast(data.error || 'Export failed', 'error');
+                return;
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'favorites-summary-report.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch (err) {
+            toast(err.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
     async function init() {
         const session = window.SupabaseAuth ? await window.SupabaseAuth.getSession() : null;
         if (!session) {
@@ -204,6 +295,7 @@
         $('fav-content').classList.remove('d-none');
         try { all = await load(); } catch (e) { toast(e.message, 'error'); }
         renderFavorites();
+        await renderReports();
         await renderRecommendations();
         if (navigator.geolocation) { // refine picks around the user's current position, if they allow it
             navigator.geolocation.getCurrentPosition((pos) => {
@@ -226,6 +318,17 @@
                 renderFavorites();
                 renderRecommendations();
             } catch (err) { toast(err.message, 'error'); rm.disabled = false; }
+            return;
+        }
+        const repBtn = e.target.closest('.download-report-btn');
+        if (repBtn) {
+            downloadReportPdf(repBtn.dataset.id);
+            return;
+        }
+        const favRepBtn = e.target.closest('#btn-download-favs-report');
+        if (favRepBtn) {
+            downloadFavoritesReportPdf();
+            return;
         }
     });
 

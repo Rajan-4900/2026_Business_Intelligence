@@ -49,13 +49,34 @@
         </div>
 
         <div id="fav-content" class="d-none" style="display:flex; flex-direction:column; gap:32px;">
+            <!-- My Favorites (Places) -->
             <section class="fav-section">
-                <h2><i class="fas fa-heart text-danger"></i> My Favorites <span class="fav-badge" id="fav-count">0</span></h2>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                    <h2><i class="fas fa-heart text-danger"></i> My Favorites <span class="fav-badge" id="fav-count">0</span></h2>
+                    <button type="button" class="btn btn-outline-info btn-sm" id="btn-download-favs-report" title="Download summary report of all saved & marked places">
+                        <i class="fas fa-file-pdf me-1"></i> Download All Favorites Report
+                    </button>
+                </div>
                 <p class="sub">Places you've saved from the heatmap and Popular Places.</p>
                 <div id="fav-chips" class="fav-chips"></div>
                 <div id="fav-list" class="fav-grid"></div>
             </section>
 
+            <!-- Generated Business Reports (Stored Reports) -->
+            <section class="fav-section" id="fav-reports-section">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                    <h2><i class="fas fa-file-pdf text-primary"></i> Generated Business Reports <span class="fav-badge" id="reports-count" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">0</span></h2>
+                    <a href="/dashboard/?auto_map=true" class="btn btn-primary-blue btn-sm">
+                        <i class="fas fa-map-location-dot me-1"></i> New Map Report
+                    </a>
+                </div>
+                <p class="sub">Full detailed business intelligence reports stored for your account to download anytime.</p>
+                <div id="reports-list" class="fav-grid">
+                    <div class="fav-empty"><i class="fas fa-spinner fa-spin"></i><p>Loading reports…</p></div>
+                </div>
+            </section>
+
+            <!-- Recommended for you -->
             <section class="fav-section">
                 <h2><i class="fas fa-wand-magic-sparkles text-info"></i> Recommended for you</h2>
                 <p class="sub" id="rec-sub">Loading picks…</p>

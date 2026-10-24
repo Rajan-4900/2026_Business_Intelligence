@@ -238,6 +238,28 @@
         text-align: center;
     }
 
+    .auth-verify-status-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 13px 18px;
+        background: rgba(56, 189, 248, 0.1);
+        border: 1px dashed rgba(56, 189, 248, 0.4);
+        border-radius: 12px;
+        color: #38bdf8;
+        font-size: 0.92rem;
+        font-weight: 600;
+        margin: 16px 0;
+        transition: all 0.3s ease;
+    }
+
+    .auth-verify-status-box.verified {
+        background: rgba(62, 207, 142, 0.15);
+        border: 1px solid #3ecf8e;
+        color: #3ecf8e;
+    }
+
     .auth-link-forgot {
         color: #3ecf8e;
         font-size: 0.8rem;
@@ -371,6 +393,40 @@
                     <i class="fas fa-user-plus"></i> Create Account
                 </button>
             </form>
+
+            <!-- SIGN UP EMAIL VERIFICATION WAITING SCREEN -->
+            <div id="view-signup-verify" style="display: none; text-align: center; padding: 6px 0;">
+                <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+                    <i class="fas fa-envelope-open-text" style="font-size: 1.8rem; color: #38bdf8;"></i>
+                </div>
+                <h4 style="color: #ffffff; font-size: 1.25rem; font-weight: 700; margin-bottom: 8px;">Check Your Email</h4>
+                <p style="color: #cbd5e1; font-size: 0.88rem; line-height: 1.5; margin-bottom: 12px;">
+                    We sent a verification link to<br>
+                    <strong id="display-signup-email" style="color: #38bdf8; word-break: break-all;"></strong>
+                </p>
+
+                <!-- Status indicator: waiting or verified -->
+                <div id="verify-status-box" class="auth-verify-status-box">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span id="verify-status-text">Waiting for email verification...</span>
+                </div>
+
+                <p style="color: #94a3b8; font-size: 0.82rem; margin-bottom: 22px; line-height: 1.45;">
+                    Please click the verification link in your inbox. This page will automatically detect when you verify and redirect you to Sign In.
+                </p>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button type="button" id="btn-check-verification" onclick="checkVerificationStatus(true)" class="btn-auth-primary">
+                        <i class="fas fa-sync-alt"></i> I've Verified My Email
+                    </button>
+                    <button type="button" id="btn-resend-signup-email" onclick="resendSignupVerification()" class="btn-auth-primary" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff; box-shadow: none;">
+                        <i class="fas fa-redo-alt"></i> Resend Verification Email
+                    </button>
+                    <button type="button" class="auth-back-link" style="justify-content: center; margin-top: 6px;" onclick="cancelSignupVerification()">
+                        <i class="fas fa-arrow-left"></i> Change Details / Back
+                    </button>
+                </div>
+            </div>
 
             <!-- FORGOT / RESET PASSWORD CONTAINER -->
             <div id="form-forgot" style="display: none;">
@@ -512,29 +568,39 @@
         const tabSignUp = document.getElementById('tab-btn-signup');
         const formSignIn = document.getElementById('form-signin');
         const formSignUp = document.getElementById('form-signup');
+        const viewSignupVerify = document.getElementById('view-signup-verify');
         const formForgot = document.getElementById('form-forgot');
         const formResetRequest = document.getElementById('form-reset-request');
         const viewResetSent = document.getElementById('view-reset-sent');
         const formNewPassword = document.getElementById('form-new-password');
 
         if (tab === 'signin') {
+            stopSignupVerificationCheck();
             if (tabContainer) tabContainer.style.display = 'flex';
             tabSignIn.classList.add('active');
             tabSignUp.classList.remove('active');
             formSignIn.style.display = 'block';
             formSignUp.style.display = 'none';
+            if (viewSignupVerify) viewSignupVerify.style.display = 'none';
             formForgot.style.display = 'none';
         } else if (tab === 'signup') {
             if (tabContainer) tabContainer.style.display = 'flex';
             tabSignUp.classList.add('active');
             tabSignIn.classList.remove('active');
-            formSignUp.style.display = 'block';
+            if (viewSignupVerify && viewSignupVerify.style.display === 'block') {
+                formSignUp.style.display = 'none';
+            } else {
+                formSignUp.style.display = 'block';
+                if (viewSignupVerify) viewSignupVerify.style.display = 'none';
+            }
             formSignIn.style.display = 'none';
             formForgot.style.display = 'none';
         } else if (tab === 'forgot') {
+            stopSignupVerificationCheck();
             if (tabContainer) tabContainer.style.display = 'none';
             formSignIn.style.display = 'none';
             formSignUp.style.display = 'none';
+            if (viewSignupVerify) viewSignupVerify.style.display = 'none';
             formForgot.style.display = 'block';
             formResetRequest.style.display = 'block';
             viewResetSent.style.display = 'none';
@@ -643,30 +709,190 @@
         document.getElementById('signin-password').value = 'Password123!';
     }
 
+    // Pending Signup State & Verification Polling
+    let pendingSignup = {
+        email: '',
+        password: '',
+        fullName: ''
+    };
+    let signupVerifyInterval = null;
+
+    function startSignupVerificationCheck() {
+        stopSignupVerificationCheck();
+        // Poll every 3.5 seconds
+        signupVerifyInterval = setInterval(async () => {
+            await checkVerificationStatus(false);
+        }, 3500);
+    }
+
+    function stopSignupVerificationCheck() {
+        if (signupVerifyInterval) {
+            clearInterval(signupVerifyInterval);
+            signupVerifyInterval = null;
+        }
+    }
+
+    function cancelSignupVerification() {
+        stopSignupVerificationCheck();
+        const viewVerify = document.getElementById('view-signup-verify');
+        const formSignUp = document.getElementById('form-signup');
+        if (viewVerify) viewVerify.style.display = 'none';
+        if (formSignUp) formSignUp.style.display = 'block';
+        const btnSignUp = document.getElementById('btn-submit-signup');
+        if (btnSignUp) {
+            btnSignUp.disabled = false;
+            btnSignUp.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+        }
+        hideAlert();
+    }
+
+    async function checkVerificationStatus(manual = false) {
+        if (!pendingSignup.email) return;
+
+        const statusBox = document.getElementById('verify-status-box');
+        const statusText = document.getElementById('verify-status-text');
+        const btnCheck = document.getElementById('btn-check-verification');
+
+        if (manual && btnCheck) {
+            btnCheck.disabled = true;
+            btnCheck.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+        }
+
+        const client = window.SupabaseAuth.init();
+        if (!client) {
+            if (manual && btnCheck) {
+                btnCheck.disabled = false;
+                btnCheck.innerHTML = '<i class="fas fa-sync-alt"></i> I\'ve Verified My Email';
+            }
+            return;
+        }
+
+        try {
+            // Attempt signing in with the credentials entered during signup
+            const { data, error } = await client.auth.signInWithPassword({
+                email: pendingSignup.email,
+                password: pendingSignup.password
+            });
+
+            if (data && data.session) {
+                // Email is confirmed and sign in succeeded!
+                stopSignupVerificationCheck();
+                if (statusBox) {
+                    statusBox.className = 'auth-verify-status-box verified';
+                    statusBox.innerHTML = '<i class="fas fa-check-circle"></i> <span>Email verified! Redirecting to Sign In...</span>';
+                }
+                showAlert('Email verified successfully! Redirecting to Sign In...', 'success');
+
+                // Sign out so they can land on sign in screen or choose how to proceed
+                await client.auth.signOut();
+
+                setTimeout(() => {
+                    cancelSignupVerification();
+                    switchAuthTab('signin');
+                    document.getElementById('signin-email').value = pendingSignup.email;
+                    document.getElementById('signin-password').value = pendingSignup.password;
+                    showAlert('Your email has been verified! You can now sign in.', 'success');
+                }, 1800);
+                return;
+            }
+
+            if (error) {
+                const msg = (error.message || '').toLowerCase();
+                if (msg.includes('email not confirmed') || msg.includes('not confirmed')) {
+                    if (manual) {
+                        showAlert('Email is not verified yet. Please check your inbox and click the verification link.', 'error');
+                    }
+                } else {
+                    if (manual) {
+                        showAlert(error.message || 'Verification check failed.', 'error');
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Verification check polling error:', e);
+        } finally {
+            if (manual && btnCheck) {
+                btnCheck.disabled = false;
+                btnCheck.innerHTML = '<i class="fas fa-sync-alt"></i> I\'ve Verified My Email';
+            }
+        }
+    }
+
+    async function resendSignupVerification() {
+        if (!pendingSignup.email) return;
+
+        const btnResend = document.getElementById('btn-resend-signup-email');
+        if (btnResend) {
+            btnResend.disabled = true;
+            btnResend.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resending...';
+        }
+
+        const client = window.SupabaseAuth.init();
+        try {
+            const { error } = await client.auth.resend({
+                type: 'signup',
+                email: pendingSignup.email,
+                options: {
+                    emailRedirectTo: window.location.origin + '/login/?verified=true'
+                }
+            });
+
+            if (error) {
+                showAlert(error.message || 'Unable to resend verification email.', 'error');
+            } else {
+                showAlert('Verification email resent! Please check your inbox and spam folder.', 'success');
+            }
+        } catch (err) {
+            showAlert(err.message || 'Failed to resend verification email.', 'error');
+        }
+
+        let countdown = 30;
+        if (btnResend) {
+            btnResend.disabled = true;
+            const timer = setInterval(() => {
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    btnResend.disabled = false;
+                    btnResend.innerHTML = '<i class="fas fa-redo-alt"></i> Resend Verification Email';
+                } else {
+                    btnResend.innerHTML = `<i class="fas fa-clock me-1"></i> Resend in ${countdown}s`;
+                    countdown--;
+                }
+            }, 1000);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const client = window.SupabaseAuth.init();
 
-        // Check if user opened page from a password recovery link
+        // Check if user opened page from a password recovery link or verified signup link
         const hash = window.location.hash || '';
         const search = window.location.search || '';
         const isRecoveryUrl = hash.includes('type=recovery') || search.includes('type=recovery');
+        const isSignupVerified = search.includes('verified=true') || hash.includes('type=signup') || search.includes('type=signup');
 
         if (isRecoveryUrl) {
             switchAuthTab('new-password');
             showAlert('Password reset link verified! Please enter your new password below.', 'success');
+        } else if (isSignupVerified) {
+            switchAuthTab('signin');
+            showAlert('Your email has been verified! Please sign in with your credentials.', 'success');
         }
 
-        // Listen for Supabase password recovery auth event
+        // Listen for Supabase password recovery and sign-in auth events
         if (client) {
             client.auth.onAuthStateChange(async (event, session) => {
                 if (event === 'PASSWORD_RECOVERY') {
                     switchAuthTab('new-password');
                     showAlert('Password reset link verified! Please enter your new password below.', 'success');
+                } else if (event === 'SIGNED_IN' && pendingSignup.email) {
+                    // Triggered when link was clicked
+                    await checkVerificationStatus(false);
                 }
             });
 
-            // Check if already authenticated (skip if password recovery is in progress)
-            if (!isRecoveryUrl) {
+            // Check if already authenticated (skip if password recovery or verification in progress)
+            if (!isRecoveryUrl && !isSignupVerified) {
                 client.auth.getSession().then(({ data }) => {
                     if (data && data.session) {
                         showAlert('You are already signed in. Redirecting to dashboard...', 'success');
@@ -728,11 +954,13 @@
             btnSignUp.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
 
             try {
+                const redirectUrl = window.location.origin + '/login/?verified=true';
                 const { data, error } = await client.auth.signUp({
                     email,
                     password,
                     options: {
-                        data: { full_name: fullName }
+                        data: { full_name: fullName },
+                        emailRedirectTo: redirectUrl
                     }
                 });
 
@@ -744,16 +972,30 @@
                     await window.SupabaseAuth.logActivity('auth_signup', 'Registration', { email, full_name: fullName });
                     
                     if (data.session) {
+                        // Email confirmation is disabled in Supabase; user is immediately logged in
                         showAlert('Account created & logged in! Redirecting...', 'success');
                         setTimeout(() => {
                             window.location.href = nextUrl;
                         }, 700);
                     } else {
-                        showAlert('Account created successfully! Please check your email to confirm or sign in now.', 'success');
-                        setTimeout(() => {
-                            switchAuthTab('signin');
-                            document.getElementById('signin-email').value = email;
-                        }, 1500);
+                        // Email confirmation is required! Show waiting screen and DO NOT redirect until verified
+                        pendingSignup = { email, password, fullName };
+                        document.getElementById('display-signup-email').textContent = email;
+                        
+                        const formSignUpEl = document.getElementById('form-signup');
+                        const viewVerifyEl = document.getElementById('view-signup-verify');
+                        if (formSignUpEl) formSignUpEl.style.display = 'none';
+                        if (viewVerifyEl) viewVerifyEl.style.display = 'block';
+
+                        const statusBox = document.getElementById('verify-status-box');
+                        if (statusBox) {
+                            statusBox.className = 'auth-verify-status-box';
+                            statusBox.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span id="verify-status-text">Waiting for email verification...</span>';
+                        }
+
+                        hideAlert();
+                        // Start polling/listening to detect when the user verifies their email
+                        startSignupVerificationCheck();
                     }
                 }
             } catch (err) {

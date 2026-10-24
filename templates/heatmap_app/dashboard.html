@@ -9,6 +9,7 @@
 {% endblock %}
 
 
+{% block main_class %}dashboard-main-page{% endblock %}
 {% block content %}
 <div class="dashboard-wrapper">
     <!-- Sidebar -->
@@ -18,14 +19,14 @@
             <span>Heatmap</span>
         </div>
         <nav class="sidebar-nav">
-            <a href="{% url 'dashboard' %}" class="sidebar-link active">
+            <a href="{% url 'dashboard' %}" id="sidebar-dashboard-link" class="sidebar-link active">
                 <i class="fas fa-th-large me-3"></i>Dashboard
             </a>
             <a href="{% url 'dashboard' %}?auto_map=true" id="sidebar-heatmap-link" class="sidebar-link">
-                <i class="fas fa-map-marked-alt me-3"></i>Heatmap Analytics
+                <i class="fas fa-map me-3"></i>Map
             </a>
             <a href="{% url 'dashboard' %}?ai=true" id="sidebar-ai-link" class="sidebar-link">
-                <i class="fas fa-lightbulb me-3"></i>Business Recommendations
+                <i class="fas fa-chart-line me-3"></i>Business Analytics
             </a>
             <a href="#" id="sidebar-startup-form-link" class="sidebar-link">
                 <i class="fas fa-clipboard-list me-3"></i>Startup Form
@@ -65,8 +66,7 @@
             <button type="button" id="sidebar-toggle-btn" class="sidebar-toggle-btn" aria-label="Toggle sidebar">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1 class="dashboard-title">Dashboard</h1>
-            <div class="dashboard-header-actions">
+            <div class="dashboard-header-actions ms-auto">
                 <div id="dashboard-header-auth-pill" class="d-flex align-items-center gap-2"></div>
             </div>
         </header>
@@ -188,41 +188,47 @@
             </div>
         </div>
 
-        <!-- Dynamic Map Overlay (Hidden by default, emerges on click) -->
+        <!-- Dynamic Map Overlay (Full Size with Unified Top Control Bar) -->
         <div id="dynamic-map-container" class="dynamic-map-container d-none">
-            <div class="dynamic-map-header">
-                <div class="d-flex align-items-center">
-                    <button class="btn btn-back-dashboard" id="btn-back-to-dashboard">
-                        <i class="fas fa-arrow-left me-2"></i> Dashboard
+            <!-- Dedicated Top Control Bar Above Map -->
+            <div class="dynamic-map-top-bar">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-back-dashboard" id="btn-back-to-dashboard" title="Back to Dashboard">
+                        <i class="fas fa-arrow-left me-1"></i> Dashboard
                     </button>
-                    <h2 class="ms-3 mb-0 h5">Live Crowd Heatmap</h2>
+                    <h2 class="map-top-bar-title mb-0"><i class="fas fa-map-marked-alt text-primary me-2"></i>Live Crowd Heatmap</h2>
                 </div>
-                <button type="button" class="btn btn-generate-report ms-auto" id="btn-generate-report" data-report-trigger
-                    title="Create a PDF report for the selected location">
-                    <i class="fas fa-file-pdf me-2"></i>Generate Detailed Report
-                </button>
-            </div>
 
-            <!-- Floating Search Bar on Map -->
-            <div class="search-overlay-compact floating-map-search">
-                <div class="position-relative" style="flex:1;">
-                    <input type="text" id="dashboard-location-search" class="form-control" placeholder="Search areas..."
-                        autocomplete="off">
-                    <div id="dashboard-search-suggestions" class="search-suggestions-dropdown"></div>
+                <!-- Integrated Search -->
+                <div class="search-overlay-compact map-top-bar-search">
+                    <div class="position-relative" style="flex:1;">
+                        <input type="text" id="dashboard-location-search" class="form-control" placeholder="Search areas..." autocomplete="off">
+                        <div id="dashboard-search-suggestions" class="search-suggestions-dropdown"></div>
+                    </div>
+                    <button class="btn btn-primary-blue" id="dashboard-search-btn">Search</button>
                 </div>
-                <button class="btn btn-primary-blue" id="dashboard-search-btn">Search</button>
-                <div class="map-border-controls ms-2 d-flex gap-2">
-                    <button type="button" class="btn btn-map-control" id="dashboard-find-location-btn"
-                        title="Find My Location">
+
+                <!-- Action Controls: Find My Location & Popular Locations -->
+                <div class="map-border-controls d-flex gap-2">
+                    <button type="button" class="btn btn-map-control" id="dashboard-find-location-btn" title="Find My Location">
                         <i class="fas fa-location-crosshairs"></i>
+                        <span>Find My Location</span>
                     </button>
-                    <button type="button" class="btn btn-map-control" id="dashboard-popular-places-btn"
-                        title="Popular Places (5km)">
+                    <button type="button" class="btn btn-map-control" id="dashboard-popular-places-btn" title="Popular Locations">
                         <i class="fas fa-bullseye"></i>
+                        <span>Popular Locations</span>
+                    </button>
+                </div>
+
+                <!-- Generate Report Action -->
+                <div class="ms-auto d-flex align-items-center">
+                    <button type="button" class="btn btn-generate-report" id="btn-generate-report" data-report-trigger title="Create a PDF report for the selected location">
+                        <i class="fas fa-file-pdf me-2"></i>Generate Detailed Report
                     </button>
                 </div>
             </div>
 
+            <!-- Viewport for Leaflet Map (Edge to Edge) -->
             <div id="dashboard-map" class="dashboard-map-viewport"></div>
 
             <div class="dynamic-map-footer">
@@ -253,10 +259,17 @@
                 <div class="col-12">
                     <div id="popular-places-panel"
                         class="dashboard-analytics-panel static-panel popular-matrix-panel d-none">
-                        <div class="panel-header">
-                            <h3><i class="fas fa-list-ul me-2"></i> Popular Places</h3>
-                            <button class="btn-close-panel" id="close-popular-places"><i
-                                    class="fas fa-times"></i></button>
+                        <div class="panel-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <h3 class="mb-0"><i class="fas fa-list-ul me-2"></i> Popular Places</h3>
+                                <span class="badge bg-dark-subtle text-light border ms-2">4x4 Matrix</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-generate-report btn-sm" id="btn-popular-places-report" data-report-trigger title="Create a detailed PDF business report for this scanned location">
+                                    <i class="fas fa-file-pdf me-2"></i>Full Detailed Report
+                                </button>
+                                <button class="btn-close-panel" id="close-popular-places" title="Close"><i class="fas fa-times"></i></button>
+                            </div>
                         </div>
                         <div class="panel-content scrollable">
                             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -275,24 +288,17 @@
                     </div>
                 </div>
 
-                <!-- Business Intelligence Column -->
+                <!-- Business Analytics Column -->
                 <div class="col-12">
                     <div id="business-intelligence-panel"
                         class="dashboard-analytics-panel intelligence-panel static-panel d-none">
-                        <div class="panel-header">
-                            <h3><i class="fas fa-lightbulb me-2"></i> Business Intelligence</h3>
-                            <button class="btn-close-panel" id="close-intelligence-panel"><i
-                                    class="fas fa-times"></i></button>
+                        <!-- Hidden controls to preserve compatibility with existing JS hooks -->
+                        <div class="d-none">
+                            <button class="btn-close-panel" id="close-intelligence-panel" type="button"></button>
+                            <button class="nav-link active" id="dash-recs-tab" data-bs-toggle="pill"
+                                data-bs-target="#dash-recs" type="button" role="tab"></button>
                         </div>
-                        <div class="panel-content scrollable">
-                            <!-- Custom Tabs for Dashboard -->
-                            <ul class="nav nav-pills dashboard-tabs mb-3" id="dashIntelTabs" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="dash-recs-tab" data-bs-toggle="pill"
-                                        data-bs-target="#dash-recs" type="button" role="tab">Top Recs</button>
-                                </li>
-
-                            </ul>
+                        <div class="panel-content scrollable p-0">
                             <div class="tab-content" id="dashIntelContent">
                                 <div class="tab-pane fade show active" id="dash-recs" role="tabpanel">
                                     <div class="futuristic-analytics-dashboard">

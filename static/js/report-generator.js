@@ -337,7 +337,13 @@
     }
 
     async function run(source) {
-        const loc = typeof getSelectedLocation === 'function' ? getSelectedLocation() : null;
+        let loc = typeof getSelectedLocation === 'function' ? getSelectedLocation() : null;
+        if (!loc && typeof userMarker !== 'undefined' && userMarker && typeof userMarker.getLatLng === 'function') {
+            const pt = userMarker.getLatLng();
+            loc = { lat: pt.lat, lng: pt.lng, name: 'Current Location' };
+        } else if (!loc && window.lastHeatmapAnalysis) {
+            loc = { lat: window.lastHeatmapAnalysis.lat, lng: window.lastHeatmapAnalysis.lon, name: 'Scanned Location' };
+        }
         if (!loc) {
             const msg = 'Select a location first: search for a place or click the map.';
             if (source === 'chat') chat('📍 ' + msg);

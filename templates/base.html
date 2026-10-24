@@ -16,7 +16,7 @@
         integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2.4">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.3">
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -74,7 +74,7 @@
     {% endif %}
 
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content {% block main_class %}{% endblock %}">
         {% block content %}{% endblock %}
     </main>
 
@@ -95,12 +95,12 @@
         };
     </script>
     <script src="{% static 'js/supabase-auth.js' %}?v=2.3"></script>
-    <script src="{% static 'js/favorites.js' %}?v=1.0"></script>
+    <script src="{% static 'js/favorites.js' %}?v=1.1"></script>
 
     {% block extra_js %}{% endblock %}
     <!-- Custom JS (after extra_js so Leaflet loads first on map pages) -->
-    <script src="{% static 'js/main.js' %}?v=2.4"></script>
-    <script src="{% static 'js/report-generator.js' %}?v=1.0"></script>
+    <script src="{% static 'js/main.js' %}?v=3.4"></script>
+    <script src="{% static 'js/report-generator.js' %}?v=1.1"></script>
 
     <!-- Three.js (for 3D Globe) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -447,17 +447,22 @@
     <aside id="chatbot-sidebar" class="chatbot-sidebar chatbot-sidebar-closed">
         <div id="chatbot-container" class="chatbot-container">
             <div class="chatbot-header">
-                <h3>Assistant</h3>
+                <h3 style="display: flex; align-items: center; gap: 8px; font-size: 1.05rem; font-weight: 700; margin: 0;">
+                    <i class="fas fa-robot" style="color: #818cf8;"></i> AI Assistant
+                </h3>
                 <div class="chatbot-header-actions">
                     <button type="button" id="chatbot-toggle" class="chatbot-toggle-btn" title="Minimize">-</button>
                     <button type="button" id="chatbot-close-btn" class="chatbot-close-btn" title="Close">x</button>
                 </div>
             </div>
             <div id="chatbot-messages" class="chatbot-messages"></div>
-            <div id="chatbot-suggestions-container" class="chatbot-suggestions"></div>
+            <!-- Live Search Preview Popup (Appears right above input when searching features) -->
+            <div id="chatbot-search-preview" class="chatbot-search-preview d-none"></div>
             <div class="chatbot-input-container">
-                <input type="text" id="chatbot-input" class="chatbot-input" placeholder="Type your message...">
-                <button type="button" id="chatbot-send" class="chatbot-send-btn">Send</button>
+                <input type="text" id="chatbot-input" class="chatbot-input" placeholder="Search features or ask (e.g. map, analytics, reports)...">
+                <button type="button" id="chatbot-send" class="chatbot-send-btn">
+                    <i class="fas fa-paper-plane me-1"></i> Send
+                </button>
             </div>
         </div>
     </aside>

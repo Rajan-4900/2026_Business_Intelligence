@@ -3,10 +3,12 @@
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/django-6.0+-green.svg)](https://www.djangoproject.com/)
 [![Database](https://img.shields.io/badge/database-PostgreSQL%20%7C%20Supabase%20%7C%20SQLite-336791.svg)](https://supabase.com/)
-[![AI](https://img.shields.io/badge/AI-Google%20Gemini-orange.svg)](https://ai.google.dev/)
+[![AI](https://img.shields.io/badge/AI-Gemini%202.0%20%7C%20Grok%20xAI-orange.svg)](https://ai.google.dev/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-An end-to-end **Business Intelligence (BI)** web platform that helps entrepreneurs and business owners evaluate where to open a business in India. The system combines **real-time crowd density mapping**, **machine-learning business recommendations**, an **Extended Huff Gravity Model & multi-factor revenue forecasting engine**, enterprise-grade **2FA & Account Security**, and an **AI assistant** powered by Google Gemini.
+An enterprise-grade **Business Intelligence (BI) and Spatial Intelligence** web platform that helps entrepreneurs, retail chains, and startups identify the most viable, profitable locations to launch businesses across India. 
+
+The platform combines **real-time crowd density heatmap analytics**, a **Machine Learning recommendation engine (Scikit-Learn)**, an **Extended Huff Gravity Model & multi-factor revenue forecasting engine**, **Dual-AI Intelligence (Google Gemini 2.0 + Grok xAI)**, a **conversational AI Assistant with instant site search & navigation**, **investment-grade PDF report generation (WeasyPrint + ReportLab fallback)**, and enterprise **2FA & Account Security** with Supabase Cloud integration.
 
 ---
 
@@ -25,6 +27,7 @@ An end-to-end **Business Intelligence (BI)** web platform that helps entrepreneu
 - [API Endpoints](#api-endpoints)
 - [Revenue & Feasibility Engines](#revenue--feasibility-engines)
 - [Machine Learning Model](#machine-learning-model)
+- [AI Assistant & Dual-AI Engine](#ai-assistant--dual-ai-engine)
 - [Account Security & 2FA](#account-security--2fa)
 - [User Guide](#user-guide)
 - [Deployment](#deployment)
@@ -35,110 +38,119 @@ An end-to-end **Business Intelligence (BI)** web platform that helps entrepreneu
 
 ## Overview
 
-The platform answers three core questions for any location in India:
+The platform answers four critical commercial questions for any area in India:
 
-1. **How crowded is this area?** — Sector-based heatmap using OpenStreetMap POI data.
-2. **What business should I open here?** — Scikit-Learn decision tree + rule-based feasibility checks.
-3. **How much revenue can I expect?** — Multi-factor simulation engine with time-of-day, customer quality, competition modifiers, and Huff spatial gravity modeling.
+1. **How crowded is this area?** — Real-time sector-based heatmap using OpenStreetMap POI data and calibrated footfall density circles.
+2. **What business should I open here?** — Scikit-Learn decision tree classification + rule-based category feasibility engine.
+3. **How much revenue can I expect?** — Multi-factor simulation engine modeling daypart distribution, customer ticket size, competitor attraction, Customer Quality Index (CQI), and spatial gravity decay (Extended Huff Model).
+4. **Is this location viable and risk-resistant?** — Independent Dual-AI review (Gemini spatial synthesis + Grok critical risk stress-testing).
 
-Data is sourced live from **OpenStreetMap** (Nominatim geocoding + Overpass API) within an analysis radius (2 km to 5 km).
+Data is fetched live from **OpenStreetMap** (Nominatim geocoding + Overpass API) across configurable analysis radii (2 km to 5 km).
 
 ---
 
 ## Key Features
 
-### Real-Time Crowd Heatmap
-- Search any location in India or use browser geolocation.
-- Divides the area into a **3×3 sector grid** and classifies each sector as **High**, **Medium**, or **Low** intensity based on POI density.
-- Thresholds: High ≥ 15 POIs/sector, Medium 5–14, Low < 5.
+### 🗺️ Real-Time Crowd Heatmap & POI Radar
+- **Calibrated Footfall Circles**: Color-coded crowd density overlays accurately calibrated for spatial density:
+  - 🔴 **High Density (~420m radius)**: Heavy pedestrian footfall, prime commercial hub.
+  - 🟡 **Medium Density (~300m radius)**: Moderate, steady consumer traffic with balanced competition.
+  - 🟢 **Low Density (~200m radius)**: Quieter developing or residential zones.
+- **Dynamic 3×3 Sector Grid**: Classifies area sectors into High (≥15 POIs), Medium (5–14 POIs), and Low (<5 POIs).
+- **Seamless Zero-Gap Header**: Dynamic map control bar attached flush to the navigation bar.
+- **Front-of-Map POI Markers**: Feasible business markers and candidate pins elevated to the front of map layers for unobstructed visibility.
+- **Nearby Popular Places Radar**: Scans nearby commercial establishments (cafes, pharmacies, gyms, retail stores, restaurants) with one-click bookmarking.
 
-### AI-Powered Business Recommendations
-- **Scikit-Learn DecisionTreeClassifier** trained on `business_dataset.csv` predicts the best business type from crowd intensity, shop density, and area type.
-- **Google Gemini** chatbot ("Antigravity") provides conversational guidance, geocoding assistance, and triggers map actions.
-- **Smart Relocation (AI Zones)**: Scans ~1.7 km offsets to rank alternative high-potential locations.
+### 🤖 Conversational AI Assistant & Instant Feature Router
+- **Friendly Conversational Mode**: Natural, warm conversation just like **ChatGPT and Google Gemini**. Responds instantly (<70ms) to greetings, friendly chit-chat, name inquiries (*"what is your name"*), humor (*"tell me a joke"*), and advice.
+- **Zero-Lag Website Knowledge Base (`SITE_FEATURES_KNOWLEDGE`)**: Answers questions about any platform tool (Heatmap, Business Analytics, Startup Form, Favorites, Reports, Revenue, GPS) in milliseconds without network waiting.
+- **Instant Redirection & Action Buttons**: Each answered query renders an interactive action button (e.g. `[ 🚀 Open Live Heatmap ]`, `[ 📊 Go to Business Analytics ]`, `[ 📄 Open Reports Hub ]`). Direct navigation commands automatically redirect within 350ms.
+- **Live Search-As-You-Type Preview**: Typing in the chatbot input bar (e.g. `"rep"`, `"ana"`, `"map"`) displays a glassmorphic quick-jump preview popup with one-click **Go →** buttons.
+- **Dual-Action Input Handling**: Supports both <kbd>Enter</kbd> keypress and the **Send** button seamlessly.
 
-### Revenue & Feasibility Engine
-- **Spatial Prediction Engine (Extended Huff Model)**: Calculates retail gravity, competitor attraction, market capture probability, and sales estimates.
-- **Smart Revenue Forecast** (`calculate_smart_revenue`): Footfall × conversion × dynamic average spend, adjusted for competition, overload, and customer quality.
-- **Per-POI Revenue Enrichment** (`enrich_places_with_revenue`): Estimates revenue for nearby businesses with high efficiency.
-- **Feasibility Checker**: Evaluates Go/No-Go decisions using CSV intensity rules, ML prediction, and live POI density evidence.
+### 🧠 Dual-AI Intelligence Architecture (Gemini 2.0 + Grok)
+- **Primary Spatial Intelligence (Google Gemini 2.0 / 2.5 Flash)**: Analyzes spatial POI distributions, demographic context, competitive advantages, and market trends.
+- **Critical Risk Review (xAI Grok)**: Independently stress-tests business viability, identifying commercial risks, footfall bottlenecks, saturation hazards, and operational pitfalls.
 
-### Enterprise Account Security & 2FA
-- **Custom User Model** (`users.CustomUser`) using email authentication with roles (**Businessman** & **Customer**).
-- **Two-Factor Authentication (2FA)**: Time-based One-Time Passwords (TOTP) compatible with Google Authenticator, Authy, etc.
-- **Single-Use Recovery Codes**: Cryptographically hashed backup codes for account recovery.
-- **Active Session & Device Management**: View active sessions with device names/IPs and revoke any session remotely.
-- **Security Audit Logs**: Automated logging of logins, password resets, and 2FA events.
+### 📊 Interactive Dashboard & Launchpad UI
+- **Single-Scroll Architecture**: Removed nested inner scrollbars in favor of a clean, single-page viewport with a full-width responsive feature grid.
+- **Seamless View Switching**: Instant transition between **Dashboard Launchpad**, **Live Heatmap (Full Window)**, **Business Analytics (`?ai=true`)**, and **Startup Planning Form** without page reload.
+- **Live Revenue Animations & Flashcards**: Interactive 4×4 business category cards with projected monthly turnover and break-even metrics.
 
-### Favorites & Popular Picks
-- Signed-in users tap the heart on any Popular Places card to save it; `/favorites/` lists saved places and recommends new ones.
-- Stored in Supabase (`public.favorite_places`) with Row Level Security; Django forwards the user's own token, so ownership is enforced by Supabase.
-- Recommendations (`favorites/recommender.py`) blend time-decayed popularity across all users, the user's category taste, distance, and the revenue engine's location score.
-- **Setup:** run [`supabase/favorites.sql`](supabase/favorites.sql) and [`supabase/user_history.sql`](supabase/user_history.sql) (per-user history of searches, analyses and inquiries) in the Supabase SQL Editor. Also run [`supabase/security_fixes.sql`](supabase/security_fixes.sql), which stops the public anon key from reading profile emails and activity logs.
+### 📋 Startup Planning Form & Feasibility Engine
+- Interactive startup venture calculator allowing entrepreneurs to specify business category, target capital budget, minimum required footfall, and operating hours to receive algorithmic suitability scores.
 
-### AI-Powered Business Intelligence Report (PDF)
-- **Generate Detailed Report** on the dashboard map, or ask the chatbot (*"Generate a comprehensive PDF report for this location."*), produces a 20–25 page A4 PDF for the selected location.
-- Contents: executive summary with KPI cards, location overview, the **actual heatmap screenshot** captured from the live map, ML recommendations compared with revenue-engine scores, competitors, revenue scenarios, Go/No-Go feasibility, a business-specific roadmap, a risk matrix, final recommendations and an investment checklist, plus 5 rendered flowcharts and up to 9 charts.
-- All figures come from the existing engines, rerun on the server. Gemini writes only the explanations, which are schema-checked and rejected if they contain figures that are not in the data; otherwise template text is used and labelled as such.
-- Every figure is tagged *Observed*, *Estimate*, *AI text*, *Your input* or *Missing*. Missing data is shown as "Data unavailable for this analysis.", never filled in.
-- Reports are private (Supabase user id), expire after 24 h, and need `brew install pango` / `libpango` for WeasyPrint. See [docs/REPORT_GENERATION.md](docs/REPORT_GENERATION.md).
+### ⭐ Favorites Hub & Candidate Ranking
+- Bookmark candidate locations and discovered businesses with one tap on the heart icon.
+- Backed by **Supabase Cloud PostgreSQL** (`public.favorite_places`) with Row Level Security (RLS) and token authentication.
+- Candidate scoring blends user category tastes, time-decayed popularity across users, and proximity.
 
-### Interactive Dashboard
-- Analytics UI with live revenue animation, business intelligence panel, 4×4 popular places flashcard matrix, and feasibility evaluation.
-- WebSocket-powered chatbot for real-time AI assistance across all pages.
+### 📄 Investment-Grade Business Intelligence Reports (PDF)
+- Generates comprehensive 20–25 page executive PDF reports for any location.
+- **Dual PDF Engine**: Renders high-fidelity reports via **WeasyPrint** with an automated zero-dependency fallback to **ReportLab**, guaranteeing reliable PDF export on Windows, macOS, and Linux without GObject/Pango DLL failures.
+- Includes executive summary, KPI scorecard, real map screenshot, SWOT analysis, competitor mapping, footfall breakdown, and investment roadmap.
+- Stored permanently in the user's **Favorites Hub** for instant one-click download.
+
+### 🔒 Enterprise Account Security & 2FA
+- **Custom User Model** (`users.CustomUser`) using email authentication with role separation (**Businessman** & **Customer**).
+- **Two-Factor Authentication (2FA)**: TOTP compatible with Google Authenticator, Microsoft Authenticator, and Authy.
+- **Single-Use Cryptographic Recovery Codes**: Hashed backup codes for emergency access.
+- **Active Session & Device Manager**: Real-time IP, browser, and device tracking with remote revocation.
+- **Audit Logging**: Comprehensive security event tracking.
 
 ---
 
 ## Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                        Browser (Frontend)                       │
-│  Leaflet Map │ Dashboard UI │ Chatbot │ Business Form           │
-└──────────────┬──────────────────────────────┬───────────────────┘
-               │ HTTP/REST                    │ WebSocket
-               ▼                              ▼
-┌──────────────────────────┐    ┌──────────────────────────────┐
-│   Django Views (REST)    │    │  Django Channels (Daphne)    │
-│ tracker & business_intel │    │  tracker/consumers.py        │
-└──────────────┬───────────┘    └──────────────┬───────────────┘
-               │                               │
-               ▼                               ▼
-┌──────────────────────────┐    ┌──────────────────────────────┐
-│ Spatial Engine & Utils   │    │   Google Gemini API          │
-│ prediction_engine/       │    │   (Generative AI Chatbot)    │
-└──────────────┬───────────┘    └──────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                          Browser (Frontend)                            │
+│  Leaflet Map │ Dashboard UI │ Conversational AI Assistant │ Form Modal  │
+└──────────────────┬───────────────────────────────┬─────────────────────┘
+                   │ HTTP/REST                     │ WebSocket (ws/chat/)
+                   ▼                               ▼
+┌──────────────────────────────┐    ┌────────────────────────────────────┐
+│     Django Views (REST)      │    │     Django Channels (Daphne)       │
+│   tracker & business_intel   │    │     tracker/consumers.py           │
+└──────────────┬───────────────┘    └──────────────┬─────────────────────┘
+               │                                   │
+               ▼                                   ▼
+┌──────────────────────────────┐    ┌────────────────────────────────────┐
+│   Spatial Gravity Engine     │    │       Dual-AI Orchestrator         │
+│   (Extended Huff Model)      │    │  Gemini 2.0 Flash + Grok xAI       │
+└──────────────┬───────────────┘    └────────────────────────────────────┘
                │
                ▼
-┌──────────────────────────┐    ┌──────────────────────────────┐
-│  business_model.pkl      │    │  OpenStreetMap APIs          │
-│  (Scikit-Learn)          │    │  Nominatim + Overpass        │
-└──────────────────────────┘    └──────────────────────────────┘
+┌──────────────────────────────┐    ┌────────────────────────────────────┐
+│    Scikit-Learn ML Model     │    │       PDF Generation Pipeline      │
+│    (business_model.pkl)      │    │  WeasyPrint + ReportLab Fallback   │
+└──────────────┬───────────────┘    └────────────────────────────────────┘
                │
                ▼
-┌──────────────────────────┐
-│ SQLite / Supabase (Pg)   │
-│ (User, Security & Data)  │
-└──────────────────────────┘
+┌──────────────────────────────┐    ┌────────────────────────────────────┐
+│    OpenStreetMap APIs        │    │    SQLite / Supabase PostgreSQL    │
+│    Nominatim + Overpass      │    │    (Auth, Favorites, History, RLS) │
+└──────────────────────────────┘    └────────────────────────────────────┘
 ```
 
 ---
 
 ## Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| Backend | Django 6.0+, Django Channels 4.1 |
-| ASGI Server | Daphne 4.1 |
-| Frontend | HTML5, CSS3, Vanilla JavaScript (ES6+), Leaflet.js |
-| Machine Learning | Scikit-Learn, Pandas, NumPy |
-| Spatial Modeling | Extended Huff Gravity Model |
-| Generative AI | Google Generative AI (Gemini 2.0 / 2.5 Flash) |
-| Geospatial Data | OpenStreetMap (Nominatim & Overpass API) |
-| Database | SQLite (default dev) / PostgreSQL / Supabase via `dj-database-url` |
-| Security & 2FA | PyOTP, QRCode, Cryptographic Hash Recovery Codes |
-| Static Files | WhiteNoise 6.7 |
-| Deployment | Render / Railway / Supabase (Procfile included) |
+| Layer | Technology | Details |
+|-------|------------|---------|
+| **Backend Framework** | Django 6.0+, Django Channels 4.1 | Asynchronous ASGI-powered web framework |
+| **ASGI Server** | Daphne 4.1 | WebSocket & HTTP multiplexer |
+| **Frontend Core** | HTML5, CSS3 (Vanilla), JavaScript (ES6+) | Modern dark glassmorphic design, zero-gap layout |
+| **Mapping & GIS** | Leaflet.js, OpenStreetMap, Nominatim, Overpass API | Real-time geospatial rendering & POI queries |
+| **Machine Learning** | Scikit-Learn, Pandas, NumPy | DecisionTreeClassifier trained on business datasets |
+| **Spatial Gravity Model** | Extended Huff Gravity Model | Retail attraction, distance decay, and market share |
+| **Dual Generative AI** | Google Gemini 2.0 / 2.5 Flash + xAI Grok | Spatial synthesis & critical risk stress-testing |
+| **PDF Generation** | WeasyPrint + ReportLab Fallback | 20–25 page investment reports with zero-dependency fallback |
+| **Database** | SQLite (dev) / PostgreSQL / Supabase | Cloud PostgreSQL via `dj-database-url` with RLS |
+| **Security & Auth** | PyOTP, QRCode, Cryptographic Hash Codes | Two-Factor Authentication, Session Manager, Audit Log |
+| **Static Serving** | WhiteNoise 6.7 | Compressed static asset caching & delivery |
+| **Production Ready** | Render / Railway / Docker / Supabase | Complete `Procfile`, `run.sh`, `run.py`, and `run.ps1` |
 
 ---
 
@@ -158,8 +170,13 @@ Business_Intelligence-main/
 ├── tracker/                     # Crowd tracking & geocoding app
 │   ├── views.py                 # Location search, crowd intensity, contact views
 │   ├── utils.py                 # Revenue enrichment & scoring utils
-│   ├── consumers.py             # WebSocket chatbot consumer (Gemini)
-│   ├── routing.py               # WebSocket URL routing
+│   ├── consumers.py             # WebSocket Dual-AI chatbot consumer
+│   ├── routing.py               # WebSocket URL routing (/ws/chat/)
+│   ├── ai/                      # Dual-AI Intelligence engine
+│   │   ├── orchestrator.py      # Dual-AI dispatcher (Gemini + Grok + friendly chat)
+│   │   ├── gemini_service.py    # Google Gemini spatial intelligence
+│   │   ├── grok_service.py      # xAI Grok critical risk reviewer
+│   │   └── validators.py        # Input sanitation & scope validation
 │   ├── prediction_engine/       # Spatial gravity & Huff revenue model
 │   ├── models.py                # ContactMessage
 │   ├── forms.py                 # ContactForm
@@ -181,13 +198,13 @@ Business_Intelligence-main/
 │   ├── forms.py                 # CustomUserCreationForm, AuthenticationForm, 2FA forms
 │   └── urls.py                  # Auth URL routing
 │
-├── report_generator/            # PDF report generator (data collection, charts, flowcharts, Gemini text, WeasyPrint)
+├── report_generator/            # PDF report generator (data collection, charts, flowcharts, Gemini text)
 │   ├── services.py              # Shared pipeline for dashboard + chatbot, background thread, stages
 │   ├── data_collector.py        # Runs the existing analysis engines for one location
 │   ├── ai_writer.py / prompts.py  # Gemini stages with schema + figure validation and fallbacks
 │   ├── chart_generator.py       # Matplotlib charts from real analysis values
 │   ├── flowchart_generator.py   # Inline-SVG flowcharts
-│   ├── pdf_generator.py         # WeasyPrint rendering with a locked URL fetcher
+│   ├── pdf_generator.py         # Dual PDF engine: WeasyPrint + ReportLab fallback
 │   └── tests/                   # Validators, data, AI, PDF, API/security, chatbot tests
 │
 ├── templates/                   # HTML templates (reports/ holds the PDF templates)
@@ -292,18 +309,27 @@ sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0  # Debian/Ubuntu
 Create a `.env` file in the root directory:
 
 ```env
-# AI Chatbot
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL_NAME=gemini-2.5-flash
-
 # Django Security
 DEBUG=True
 SECRET_KEY=your_secret_key_here
+SITE_URL=http://127.0.0.1:8000
 
-# Database (Optional - defaults to SQLite if omitted)
-DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+# Database (Supabase Cloud PostgreSQL or local SQLite)
+DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true
+
+# Supabase Auth & Cloud Integration (Optional)
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_jwt_token
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Dual Generative AI Engines
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL_NAME=gemini-2.5-flash
+GROK_API_KEY=your_xai_grok_api_key
+GROK_MODEL_NAME=grok-2-latest
 
 # Email / SMTP Settings (Optional - console output in dev)
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USE_TLS=True
@@ -442,9 +468,15 @@ CREATE TABLE IF NOT EXISTS django_session (
 | :--- | :--- | :--- | :--- |
 | `DEBUG` | No | `False` | Toggle Django debug mode (`True`/`False`) |
 | `SECRET_KEY` | Yes (Prod) | Insecure dev key | Django cryptographic signing secret key |
-| `DATABASE_URL` | No | `sqlite:///db.sqlite3` | PostgreSQL/Supabase database connection URI |
-| `GEMINI_API_KEY` | No | None | Google AI Studio API key for interactive chatbot |
-| `GEMINI_MODEL_NAME` | No | `gemini-2.5-flash` | Gemini model version for chat assistant |
+| `SITE_URL` | No | `http://127.0.0.1:8000` | Base public URL for redirects and absolute links |
+| `DATABASE_URL` | No | `sqlite:///db.sqlite3` | PostgreSQL / Supabase connection URI |
+| `SUPABASE_URL` | No | None | Supabase project URL (e.g. `https://[ref].supabase.co`) |
+| `SUPABASE_ANON_KEY` | No | None | Supabase client anon JWT key |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | None | Supabase service-role administrative key (backend only) |
+| `GEMINI_API_KEY` | No | None | Google AI Studio API key for Gemini spatial intelligence |
+| `GEMINI_MODEL_NAME` | No | `gemini-2.5-flash` | Gemini model version for chat assistant & report writer |
+| `GROK_API_KEY` | No | None | xAI API key for Grok critical risk review |
+| `GROK_MODEL_NAME` | No | `grok-2-latest` | Grok model name for independent risk evaluation |
 | `EMAIL_BACKEND` | No | Console in Dev | `django.core.mail.backends.smtp.EmailBackend` in prod |
 | `EMAIL_HOST` | No | `smtp.gmail.com` | SMTP email server hostname |
 | `EMAIL_PORT` | No | `587` | SMTP server port |
@@ -504,24 +536,54 @@ daphne -b 0.0.0.0 -p 8000 crowd_heatmap_project.asgi:application
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/` | Home page with hero & quick navigation |
-| GET | `/dashboard/` | Interactive analytics dashboard & map |
-| POST | `/search-location/` | Geocode location name via Nominatim |
-| POST | `/autocomplete-location/` | Location search suggestions (India) |
-| POST | `/find-popular-places/` | Ranked POIs within 2 km + per-place revenue |
-| POST | `/analyze-crowd-intensity/` | 3×3 sector heatmap & ML business prediction |
-| POST | `/check-feasibility/` | Go/No-Go feasibility check for a business type |
-| POST | `/api/analyze-location/` | Full smart revenue forecast |
-| POST | `/api/generate-best-locations/` | Ranked AI candidate zones (top 3) |
+| GET | `/` | Home page with full-window interactive map & search |
+| GET | `/dashboard/` | Interactive BI dashboard, live heatmap & analytics launchpad |
+| GET | `/favorites/` | Saved candidate places, bookmarks & generated PDF reports hub |
+| POST | `/search-location/` | Geocode location name via OpenStreetMap Nominatim |
+| POST | `/autocomplete-location/` | Autocomplete search suggestions across India |
+| POST | `/find-popular-places/` | Ranked POIs within 2 km + per-place revenue estimates |
+| POST | `/analyze-crowd-intensity/` | 3×3 sector heatmap & ML business category prediction |
+| POST | `/check-feasibility/` | Go/No-Go commercial feasibility check for a business type |
+| POST | `/api/analyze-location/` | Full smart revenue forecast (Huff spatial model) |
+| POST | `/api/generate-best-locations/` | Ranked AI candidate relocation zones (top 3) |
 | GET | `/api/business-types/` | Dynamic list of business categories |
-| POST | `/api/find-matching-locations/` | Match locations by crowd intensity + business |
-| POST | `/submit-form/` | Submit business inquiry / user profile |
+| POST | `/api/find-matching-locations/` | Match locations by crowd intensity + business type |
+| POST | `/submit-form/` | Submit business inquiry & startup profile |
 | POST | `/contact/` | Contact message submission |
-| GET | `/accounts/security/` | Security Center (2FA, Sessions, Audit logs) |
-| WS | `/ws/chat/` | WebSocket chatbot (Gemini assistant) |
-| POST | `/api/reports/generate/` | Start a PDF report for the selected location (Supabase bearer token + CSRF) |
-| GET | `/api/reports/<id>/status/` | Report generation stages and status (owner only) |
-| GET | `/api/reports/<id>/download/` | Download the finished PDF (owner only) |
+| GET | `/accounts/security/` | Security Center (2FA, active sessions, audit logs) |
+| POST | `/chat/` | HTTP fallback endpoint for AI Assistant conversational responses |
+| WS | `/ws/chat/` | Real-time WebSocket Dual-AI assistant (Gemini + Grok) |
+| POST | `/api/reports/generate/` | Start a PDF report generation pipeline for selected location |
+| GET | `/api/reports/<id>/status/` | Report generation stage telemetry and progress status |
+| GET | `/api/reports/<id>/download/` | Download finished 20–25 page investment report PDF |
+
+---
+
+## AI Assistant & Dual-AI Engine
+
+The platform features an intelligent, conversational **AI Assistant** accessible from any page:
+
+### 1. Conversational Chat Mode (Gemini & ChatGPT Experience)
+- Chat naturally with the AI like a business partner and friend.
+- Instant, sub-70ms friendly responses for casual conversation (*"what is your name"*, *"how are you"*, *"tell me a joke"*, *"can we be friends"*, *"thank you"*).
+- Eliminates unnecessary network and geocoding latency for non-geographic chat.
+
+### 2. Zero-Lag Site Feature Knowledge Base & Fast Router
+- Client-side feature registry (`SITE_FEATURES_KNOWLEDGE`) matching user queries against all platform capabilities:
+  - **Live Crowd Heatmap**: Explains footfall density circles (Red=420m, Yellow=300m, Green=200m) and satellite layers.
+  - **Business Analytics**: Details market demand index, category breakdown, and competition metrics.
+  - **Startup Planning Form**: Outlines budget criteria, target footfall, and suitability scoring.
+  - **Favorites & Reports**: Guides users to saved bookmarks and generated PDF intelligence reports.
+  - **Popular Places & GPS Locate**: Explains POI scanning and browser geolocation.
+- Every matched answer includes a rich description and a high-contrast action button (e.g. `[ 🚀 Open Live Heatmap ]`, `[ 📊 Go to Business Analytics ]`, `[ 📄 Open Reports Hub ]`).
+- Direct navigation queries (e.g., *"go to map"*, *"open analytics"*, *"take me to reports"*) auto-redirect immediately in 350ms.
+
+### 3. Live Search-As-You-Type Preview
+- Displays an interactive glassmorphic popup above the input bar as you type, showing matched features and one-click **Go →** buttons.
+
+### 4. Dual-AI Backend Architecture
+- **Google Gemini 2.0 / 2.5 Flash**: Acts as the primary spatial intelligence engine, synthesizing geographic crowd distribution, demographic demand, and competitive clustering.
+- **xAI Grok**: Acts as the critical risk review engine, stress-testing commercial assumptions and identifying market saturation risks, overhead threats, and footfall bottlenecks.
 
 ---
 
@@ -572,11 +634,15 @@ The platform includes a dedicated **Security Center** accessible to logged-in us
 ## User Guide
 
 1. **Register & Log In**: Create an account at `/accounts/register/` and set up 2FA in the Security Center.
-2. **Explore Map**: Search for any city or landmark in India, or click "Find My Location".
-3. **Analyze Crowd Intensity**: View the 3×3 sector heatmap (High, Medium, Low intensity).
-4. **Discover Popular Places**: Click "Popular Places" to generate the 4×4 business flashcard matrix and revenue estimates.
-5. **Check Feasibility**: Ask the AI assistant or test a business type (e.g., `"open cafe in Indiranagar"`).
-6. **Dashboard Intelligence**: Access `/dashboard/?ai=true` for full revenue projections, market breakdowns, and AI relocation zones.
+2. **Explore Map**: Search for any city or landmark in India, or click "Find My Location" to center the map using GPS.
+3. **Analyze Crowd Intensity**: View the 3×3 sector heatmap and calibrated crowd circles (Red 420m, Yellow 300m, Green 200m).
+4. **Discover Popular Places**: Click "Nearby Popular Places Radar" to generate the business card matrix, footfall scores, and revenue estimates.
+5. **Chat with AI Assistant**:
+   - Chat casually like a friend: *"What is your name?"*, *"How are you?"*
+   - Check commercial feasibility: *"Open cafe in Indiranagar"*, *"Is pharmacy feasible in Koramangala?"*
+   - Jump to any page: *"Take me to map"*, *"Show business analytics"*, *"Where are my reports?"*
+6. **Save to Favorites**: Tap the heart icon on any place card to save it to your Favorites hub.
+7. **Download PDF Intelligence Reports**: Generate a full 20–25 page investment report and download it anytime from the Favorites hub.
 
 ---
 

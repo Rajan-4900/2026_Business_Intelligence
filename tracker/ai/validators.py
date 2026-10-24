@@ -52,9 +52,13 @@ def is_platform_relevant(query: str) -> bool:
             if not any(k in lower_query for k in ['location', 'place', 'business', 'shop', 'store', 'cafe', 'revenue', 'heatmap']):
                 return False
 
-    # 2. Greetings and self-identity queries are relevant (assistant should answer politely)
-    greetings = ['hi', 'hello', 'hey', 'help', 'what can you do', 'who are you', 'how does this work']
-    if any(g in lower_query for g in greetings) and len(lower_query.split()) < 8:
+    # 2. Greetings, friendly chat and self-identity queries are relevant (assistant answers like a friend)
+    friendly_prompts = [
+        'hi', 'hello', 'hey', 'help', 'what can you do', 'who are you', 'how does this work',
+        'name', 'your name', 'ur name', 'how are you', 'joke', 'friend', 'friends', 'thanks',
+        'thank you', 'cool', 'awesome', 'nice', 'great'
+    ]
+    if any(g in lower_query for g in friendly_prompts) and len(lower_query.split()) < 12:
         return True
         
     # 3. Platform keywords

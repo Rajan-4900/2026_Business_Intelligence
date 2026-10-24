@@ -11,7 +11,7 @@ load_dotenv(dotenv_path=_ENV_PATH, override=True)
 
 # System instructions to give the bot personality and awareness of map commands
 SYSTEM_INSTRUCTION = """
-You are the "Antigravity" AI Assistant for the Crowd Heatmap Analyzer. 
+You are the AI Assistant for the Crowd Heatmap Analyzer. 
 Your goal is to help users find suitable locations for businesses based on crowd density.
 
 CONSTRAINTS:
@@ -70,7 +70,7 @@ def get_bot_response(message, chat_session=None):
     # Check for direct greetings
     greetings = ["hi", "hello", "hey", "hola", "greetings", "good morning", "good afternoon"]
     if lower_msg in greetings:
-        return "👋 Hi! I'm Antigravity. I can help you \"find my location\", \"search for Bangalore\", or \"open cafe in Koramangala\". What would you like to do? 📍"
+        return "👋 Hi! I'm AI Assistant. I can help you \"find my location\", \"search for Bangalore\", or \"open cafe in Koramangala\". What would you like to do? 📍"
 
     # Check for name/identity questions
     if "my name is" in lower_msg or "i am " in lower_msg:
@@ -78,7 +78,7 @@ def get_bot_response(message, chat_session=None):
         return f"Nice to meet you, {name_part.capitalize()}! 😊 Try: \"find my location\", \"search for Indiranagar\", or \"open cafe in Koramangala\" for feasibility. 🏢"
 
     if "who are you" in lower_msg or "your name" in lower_msg:
-        return "I'm Antigravity 🤖, your Crowd Heatmap assistant. I help you find places 📍, locate yourself 🧭, and check business feasibility 🏢."
+        return "I'm AI Assistant 🤖, your Crowd Heatmap assistant. I help you find places 📍, locate yourself 🧭, and check business feasibility 🏢."
 
     if "thank you" in lower_msg or "thanks" in lower_msg:
         return "You're welcome! ✅ Ask me to \"find my location\", \"search for a place\", or \"check feasibility\" anytime."

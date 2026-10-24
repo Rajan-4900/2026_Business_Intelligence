@@ -268,7 +268,13 @@ body.base-layout {
 .main-content {
     flex: 1;
     padding: 1.5rem 0;
-    margin-top: 68px;
+    margin-top: 56px;
+}
+
+.main-content.dashboard-main-page,
+.main-content:has(.dashboard-wrapper) {
+    padding: 0 !important;
+    margin-top: 56px !important;
 }
 
 /* Footer */
@@ -1948,7 +1954,7 @@ body.chat-open .chat-fab-btn {
     position: fixed;
     top: 0;
     right: 0;
-    width: 320px;
+    width: 380px;
     max-width: 100%;
     height: 100vh;
     z-index: 4000;
@@ -2082,42 +2088,118 @@ body.chat-open .chat-fab-btn {
     }
 }
 
-/* Chatbot Suggestions */
-.chatbot-suggestions {
+/* Quick-Action Chips Removed per user request */
+#chatbot-suggestions-container,
+.chatbot-suggestions,
+.suggestion-chip {
+    display: none !important;
+}
+
+/* Chatbot Live Search Preview */
+.chatbot-search-preview {
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 12px;
+    margin: 0 12px 8px 12px;
+    padding: 8px;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.2);
+    z-index: 100;
+    animation: fadeInPreview 0.15s ease-out;
+}
+
+@keyframes fadeInPreview {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.search-preview-header {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    padding: 4px 8px 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 4px;
+}
+
+.search-preview-list {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 0.5rem 1rem;
-    margin-bottom: 0.5rem;
-    max-height: 120px;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 220px;
     overflow-y: auto;
 }
 
-.suggestion-chip {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #cbd5e1;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
+.search-preview-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
+    transition: all 0.18s ease;
+}
+
+.search-preview-item:hover {
+    background: rgba(99, 102, 241, 0.18);
+    border-color: rgba(129, 140, 248, 0.4);
+    transform: translateX(2px);
+}
+
+.preview-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.preview-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.3));
+    color: #a5b4fc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.preview-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #f1f5f9;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.suggestion-chip:hover {
-    background: var(--primary-blue);
-    border-color: var(--primary-blue);
-    color: #ffffff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+.preview-category {
+    font-size: 0.72rem;
+    color: #94a3b8;
 }
 
-.suggestion-chip i {
-    margin-right: 4px;
+.preview-jump-btn {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 6px;
+    padding: 3px 8px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.search-preview-item:hover .preview-jump-btn {
+    background: #38bdf8;
+    color: #0f172a;
 }
 
 /* Responsive */
@@ -2199,16 +2281,16 @@ body.chat-open .chat-fab-btn {
 /* ========== Dashboard Layout ========== */
 .dashboard-wrapper {
     display: flex;
-    min-height: calc(100vh - 68px);
+    min-height: calc(100vh - 56px);
 }
 
 .dashboard-sidebar {
     width: 260px;
     min-width: 260px;
     position: fixed;
-    top: 68px;
+    top: 56px;
     left: 0;
-    height: calc(100vh - 68px);
+    height: calc(100vh - 56px);
     background-color: var(--nav-bg);
     display: flex;
     flex-direction: column;
@@ -2300,10 +2382,11 @@ body.chat-open .chat-fab-btn {
 
 .dashboard-main {
     flex: 1;
-    padding: 2rem 3rem;
+    padding: 0;
     margin-left: 260px;
     background-color: var(--bg-primary);
     min-height: 100%;
+    overflow-x: hidden;
 }
 
 .dashboard-header {
@@ -2615,7 +2698,7 @@ body.chat-open .chat-fab-btn {
     }
 
     .dashboard-main {
-        padding: 1rem;
+        padding: 0;
         flex: 1;
         margin-left: 0;
     }
@@ -2877,17 +2960,19 @@ body.cinematic-mode .explore-mode-btn {
 
 /* ===== FEATURE SHOWCASE LAUNCHPAD ===== */
 .feature-showcase-launchpad {
-    padding: 1rem 0 2rem;
+    padding: 0;
     animation: fadeIn 0.5s ease;
-    overflow-y: auto;
-    max-height: calc(100vh - 80px);
+    /* Single scroll: let the body scroll, no inner overflow */
+    overflow: visible;
+    width: 100%;
 }
 
 /* Hero Section */
 .feature-hero {
     text-align: center;
-    padding: 2.5rem 1rem 2rem;
+    padding: 3rem 2rem 2.5rem;
     position: relative;
+    background: transparent;
 }
 
 .feature-hero-badge {
@@ -3004,10 +3089,9 @@ body.cinematic-mode .explore-mode-btn {
 .feature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-    gap: 1.25rem;
-    max-width: 1150px;
-    margin: 0 auto;
-    padding: 0 1rem;
+    gap: 1.5rem;
+    width: 100%;
+    padding: 0 2rem 3rem;
 }
 
 /* Feature Tile */
@@ -3412,42 +3496,61 @@ body.cinematic-mode .explore-mode-btn {
     color: #fdba74;
 }
 
-/* ========== Dynamic Map Emergence ========== */
+/* ========== Dynamic Map Emergence (Full Size) ========== */
 .dynamic-map-container {
     position: relative;
-    margin-bottom: 2rem;
-    height: 75vh;
-    min-height: 500px;
+    margin-bottom: 0;
+    height: calc(100vh - 110px);
+    min-height: 680px;
     background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
     z-index: 10;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     animation: mapEmerge var(--transition-bounce);
-    box-shadow: var(--shadow-elevated);
-    backdrop-filter: blur(20px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
     width: 100%;
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
 }
 
-.dynamic-map-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
+/* Unified Top Control Bar (replaces floating header + search overlay) */
+.dynamic-map-top-bar {
+    position: relative;
     z-index: 1200;
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(180deg, rgba(7, 11, 21, 0.92), rgba(7, 11, 21, 0.56));
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
+    padding: 0.75rem 1.25rem;
+    background: rgba(10, 14, 26, 0.97);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+}
+
+.map-top-bar-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.map-top-bar-search {
+    flex: 1;
+    max-width: 520px;
+    margin: 0;
+    background: rgba(15, 23, 42, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 12px;
+}
+
+/* Legacy class kept for any residual references */
+.dynamic-map-header {
+    display: none;
 }
 
 .btn-back-dashboard {
@@ -3627,17 +3730,57 @@ body.cinematic-mode .explore-mode-btn {
 .dashboard-analytics-panel.static-panel {
     position: static;
     width: 100%;
-    max-width: 900px;
-    max-height: 600px;
-    margin: 0 auto 1.5rem auto;
+    max-width: 100%;
+    max-height: none;
+    margin: 0 0 1.5rem 0;
     top: auto;
     right: auto;
     left: auto;
     animation: fadeIn 0.5s ease-out;
 }
 
+#business-intelligence-panel.static-panel,
+#business-intelligence-panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    margin: 0 0 2rem 0;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+}
+
+#business-intelligence-panel .panel-content {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-height: none;
+    overflow: visible;
+    padding: 0 !important;
+}
+
+#business-intelligence-panel .tab-content,
+#business-intelligence-panel .tab-pane {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+#business-intelligence-panel .futuristic-analytics-dashboard {
+    width: 100%;
+    min-height: 680px;
+    padding: 2.2rem 2.5rem;
+}
+
+#business-intelligence-panel .chart-container {
+    height: 420px;
+}
+
 .dashboard-analytics-section {
-    padding-bottom: 40px;
+    padding: 2rem 2rem 3rem;
+    width: 100%;
 }
 
 @keyframes panelSlideIn {
@@ -4769,18 +4912,24 @@ body.cinematic-mode .explore-mode-btn {
     height: 3px;
 }
 
-.popular-matrix-panel.dashboard-analytics-panel.static-panel {
-    max-width: 1320px;
+.popular-matrix-panel.dashboard-analytics-panel.static-panel,
+#popular-places-panel {
+    width: 100% !important;
+    max-width: 100% !important;
     max-height: none;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
 }
 
 .popular-matrix-panel .panel-content {
     overflow: visible;
+    width: 100%;
 }
 
 .popular-matrix-panel .flashcards-wrapper {
     max-height: none;
     overflow: visible;
+    width: 100%;
 }
 
 /* --- Custom Modal --- */
@@ -4897,7 +5046,8 @@ body.cinematic-mode .explore-mode-btn {
     min-height: 0;
     width: 100%;
     max-width: 700px;
-    margin: 0 auto;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
     animation: fadeIn 0.3s ease-in-out;
     color: #fff;
     /* White text on dark page background */
@@ -6308,3 +6458,283 @@ body.cinematic-mode .explore-mode-btn {
 .report-progress-message.error { color: #fca5a5; }
 .report-progress-message.warning { color: #fcd34d; }
 .report-progress-message.success { color: #86efac; }
+
+/* =====================================================
+   DYNAMIC MAP — Attached Flush to Top Bar & Full Viewport
+   ===================================================== */
+
+/* Eliminate dashboard-main padding and header when map is active so it attaches flush to top navbar */
+.dashboard-main.map-active,
+.dashboard-main:has(#dynamic-map-container:not(.d-none)) {
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+.dashboard-main.map-active .dashboard-header,
+.dashboard-main:has(#dynamic-map-container:not(.d-none)) .dashboard-header {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Outer container: completely flush against top navbar, no gap, no borders, no border-radius */
+.dynamic-map-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: calc(100vh - 56px) !important;
+    min-height: calc(100vh - 56px) !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden;
+    background: #080c1a;
+    box-shadow: none !important;
+}
+
+.dashboard-sidebar {
+    top: 56px !important;
+    height: calc(100vh - 56px) !important;
+}
+
+/* ----- Unified Top Control Bar (Flush with top bar) ----- */
+.dynamic-map-top-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 1.25rem;
+    background: rgba(8, 12, 26, 0.98);
+    border-top: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0 !important;
+    backdrop-filter: blur(20px);
+    z-index: 5000 !important;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow: visible !important;
+    position: relative;
+}
+
+.map-top-bar-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+
+/* Back to Dashboard button inside top bar */
+.btn-back-dashboard {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.38rem 0.85rem;
+    border-radius: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+}
+.btn-back-dashboard:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+/* Search wrapper inside top bar (must be overflow visible so suggestions float over map) */
+.map-top-bar-search {
+    flex: 0 1 360px;
+    max-width: 420px;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    padding: 0.2rem 0.4rem;
+    flex-shrink: 1;
+    position: relative !important;
+    overflow: visible !important;
+    z-index: 5100 !important;
+}
+
+.map-top-bar-search .position-relative {
+    position: relative !important;
+    overflow: visible !important;
+}
+
+.map-top-bar-search .form-control {
+    background: transparent !important;
+    border: none !important;
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    padding: 0.28rem 0.4rem;
+    box-shadow: none !important;
+}
+.map-top-bar-search .form-control::placeholder { color: #64748b; }
+.map-top-bar-search .btn-primary-blue {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Action buttons with full feature names: Find My Location & Popular Locations */
+.btn-map-control {
+    width: auto !important;
+    height: 36px;
+    padding: 0 0.85rem !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.btn-map-control:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(96, 165, 250, 0.5);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+.btn-map-control i {
+    color: #60a5fa;
+    font-size: 0.88rem;
+}
+
+/* Generate Report button */
+.btn-generate-report {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    border: none;
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.42rem 1rem;
+    border-radius: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: opacity 0.2s, transform 0.15s;
+}
+.btn-generate-report:hover { opacity: 0.9; transform: translateY(-1px); }
+
+/* ----- Leaflet map viewport fills remaining height ----- */
+.dashboard-map-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    width: 100%;
+    z-index: 0;
+}
+
+/* ----- Map Footer (legend + status bar) ----- */
+.dynamic-map-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 1rem;
+    background: rgba(8, 12, 26, 0.95);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    gap: 1rem;
+    flex-wrap: wrap;
+    z-index: 1100;
+}
+
+/* Autocomplete suggestions dropdown (Floating in Front of Map) */
+.search-suggestions-dropdown {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    left: 0 !important;
+    width: 100% !important;
+    min-width: 320px !important;
+    max-width: 480px !important;
+    background: rgba(10, 14, 30, 0.98) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 12px !important;
+    z-index: 999999 !important;
+    max-height: 280px !important;
+    overflow-y: auto !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 20px rgba(59, 130, 246, 0.25) !important;
+    backdrop-filter: blur(25px) !important;
+    padding: 6px !important;
+}
+
+.search-suggestion-item {
+    padding: 10px 14px !important;
+    cursor: pointer !important;
+    color: #f1f5f9 !important;
+    font-size: 0.88rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    gap: 12px !important;
+    margin: 2px 0 !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+    line-height: 1.4 !important;
+    background: transparent !important;
+}
+
+.search-suggestion-item:hover {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: #ffffff !important;
+    transform: translateX(3px) !important;
+}
+
+.search-suggestion-item .suggestion-icon {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    background: rgba(59, 130, 246, 0.2) !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #60a5fa !important;
+    font-size: 0.85rem !important;
+}
+
+.search-suggestion-item:hover .suggestion-icon {
+    background: rgba(59, 130, 246, 0.35) !important;
+    color: #93c5fd !important;
+}
+
+.search-suggestion-item .suggestion-name {
+    font-weight: 600 !important;
+    color: #f8fafc !important;
+    font-size: 0.88rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.search-suggestion-item .suggestion-region {
+    font-size: 0.75rem !important;
+    color: #94a3b8 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 2px !important;
+}
+
+.search-suggestion-item.text-muted {
+    cursor: default !important;
+    opacity: 0.6 !important;
+    justify-content: center !important;
+    font-style: italic !important;
+    color: #94a3b8 !important;
+}
+

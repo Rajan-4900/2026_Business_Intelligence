@@ -1195,7 +1195,7 @@ function setDashboardAIEmptyState(message) {
             <div class="text-center text-muted p-5">
                 <i class="fas fa-map-marker-alt fa-3x mb-3 opacity-50"></i>
                 <p>${message}</p>
-                <a href="/dashboard/?auto_map=true" class="btn btn-primary-blue mt-3">Open Heatmap Analytics</a>
+                <a href="/dashboard/?auto_map=true" class="btn btn-primary-blue mt-3">Open Map</a>
             </div>
         `;
     }
@@ -1270,7 +1270,7 @@ async function initDashboardAIFromStorage() {
         if (aiPanel) aiPanel.classList.remove('d-none');
         const aiTab = document.getElementById('dash-ai-tab');
         if (aiTab) aiTab.click();
-        setDashboardAIEmptyState('No analyzed location yet. Use Heatmap Analytics to select and analyze a location first.');
+        setDashboardAIEmptyState('No analyzed location yet. Use Map to select and analyze a location first.');
         return;
     }
 
@@ -1309,6 +1309,10 @@ async function openDashboardDataOnlyMode(targetTab) {
     if (recsSection) recsSection.classList.remove('d-none');
     popularPlacesPanelRequested = false;
 
+    if (typeof setActiveSidebarLink === 'function') {
+        setActiveSidebarLink('sidebar-ai-link');
+    }
+
     if (targetTab === 'ai') {
         const aiTab = document.getElementById('dash-ai-tab');
         if (aiTab) aiTab.click();
@@ -1317,9 +1321,13 @@ async function openDashboardDataOnlyMode(targetTab) {
         if (recsTab) recsTab.click();
     }
 
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 150);
+
     const stored = getSelectedLocation();
     if (!stored) {
-        setDashboardAIEmptyState('No analyzed location yet. Use Heatmap Analytics to select and analyze a location first.');
+        setDashboardAIEmptyState('No analyzed location yet. Use Map to select and analyze a location first.');
         return;
     }
 
@@ -2069,12 +2077,384 @@ function addChatMessage(message, sender, actions) {
     }, 50);
 }
 
+// ==========================================
+// Comprehensive Site Intelligence Knowledge Base
+// Fast-load client-side search & instant navigation
+// ==========================================
+const SITE_FEATURES_KNOWLEDGE = [
+    {
+        key: 'map',
+        title: 'Live Crowd Heatmap',
+        category: 'Live Map',
+        icon: 'fas fa-map-marked-alt',
+        synonyms: [
+            'map', 'live map', 'heatmap', 'heat map', 'crowd', 'crowds', 'crowd density',
+            'footfall', 'heat overlay', 'crowd circle', 'crowd circles', 'red circle',
+            'yellow circle', 'green circle', 'satellite', 'satellite view', 'layers',
+            'zoom map', 'pan map', 'open map', 'view map', 'show map', 'go to map',
+            'take me to map', 'launch map', 'traffic', 'pedestrian', 'density'
+        ],
+        description: '🗺️ **Live Crowd Heatmap**\n\nThe Live Heatmap displays real-time pedestrian and footfall density across city areas with dynamic color-coded crowd circles:\n• 🔴 **Red Circles (High Density, ~420m)**: Prime commercial footfall zones with maximum pedestrian activity.\n• 🟡 **Yellow Circles (Medium Density, ~300m)**: Steady footfall areas with balanced competition.\n• 🟢 **Green Circles (Low Density, ~200m)**: Quieter developing or residential zones.\n\nYou can search any location, toggle satellite/vector layers, zoom, and click to inspect coordinates.',
+        actionLabel: '🚀 Open Live Heatmap',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|launch|take\s+me\s+to|view|bring\s+me\s+to)\s+)?(?:the\s+)?(?:live\s+)?(?:crowd\s+)?(?:heat\s*map|map|crowds?|density)(?:\s+(?:view|page|feature))?$/i
+    },
+    {
+        key: 'analytics',
+        title: 'Business Analytics & Recommendations',
+        category: 'Analytics',
+        icon: 'fas fa-chart-line',
+        synonyms: [
+            'analytics', 'business analytics', 'ai recommender', 'recommendations',
+            'recommender', 'charts', 'graphs', 'market demand', 'competition',
+            'competition index', 'footfall metrics', 'insights', 'category breakdown',
+            'business recommendations', 'best locations', 'ai analysis', 'market analysis',
+            'open analytics', 'go to analytics', 'show analytics', 'take me to analytics'
+        ],
+        description: '📊 **Business Analytics & AI Recommendations**\n\nOur AI-driven analytics suite provides deep market intelligence:\n• **Market Demand Index**: Sector-specific consumer activity.\n• **Competition Density**: Measures local competition to reveal high-potential market gaps.\n• **Category Breakdown**: Analyzes viability across cafes, pharmacies, gyms, and retail.\n• **AI Suitability Ranking**: AI algorithms score top candidate locations based on ROI potential.',
+        actionLabel: '📊 Go to Business Analytics',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|launch|take\s+me\s+to|view)\s+)?(?:the\s+)?(?:business\s+)?(?:analytics|recommendations|recommender|charts|ai\s+recommender)(?:\s+(?:page|section|feature))?$/i
+    },
+    {
+        key: 'startup-form',
+        title: 'Startup Planning Form',
+        category: 'Feasibility Tool',
+        icon: 'fas fa-clipboard-list',
+        synonyms: [
+            'startup form', 'startup', 'form', 'business form', 'submit business',
+            'feasibility form', 'feasibility engine', 'open form', 'open business form',
+            'fill form', 'plan business', 'enter business details', 'budget criteria',
+            'business planner', 'criteria form'
+        ],
+        description: '📋 **Startup Planning Form & Feasibility Engine**\n\nInput your startup venture criteria to receive customized feasibility scores and location recommendations:\n• **Business Category**: Cafe, restaurant, pharmacy, retail, gym, salon, grocery, etc.\n• **Target Budget**: Define your capital expenditure limit.\n• **Required Footfall**: Specify desired customer volume.\n• **Operating Hours & Target Audience**: Tailors demographic matching.',
+        actionLabel: '📋 Open Startup Form',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|launch|take\s+me\s+to|fill)\s+)?(?:the\s+)?(?:startup\s+)?(?:business\s+)?(?:form|feasibility\s+engine)(?:\s+(?:modal|page|section))?$/i
+    },
+    {
+        key: 'favorites',
+        title: 'My Favorites & Saved Places',
+        category: 'Saved Items',
+        icon: 'fas fa-heart',
+        synonyms: [
+            'favorites', 'favourite', 'favorite', 'favourites', 'saved', 'saved places',
+            'bookmarks', 'saved spots', 'my favorites', 'saved locations', 'heart',
+            'pinned places', 'open favorites', 'go to favorites', 'show favorites'
+        ],
+        description: '⭐ **My Favorites Hub**\n\nAccess all your shortlisted locations and saved opportunities:\n• Tap the **heart icon** on any recommended business card or popular place to save it.\n• Review all pinned spots side-by-side with crowd metrics.\n• Easily access and manage your saved business intelligence reports.',
+        actionLabel: '⭐ Open Favorites',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|launch|take\s+me\s+to|view)\s+)?(?:the\s+)?(?:my\s+)?(?:favorites|favourites|saved\s+places|bookmarks)(?:\s+(?:page|section|hub))?$/i
+    },
+    {
+        key: 'reports',
+        title: 'Generated Business Intelligence Reports',
+        category: 'PDF Reports',
+        icon: 'fas fa-file-pdf',
+        synonyms: [
+            'reports', 'report', 'pdf', 'pdf report', 'business report', 'detailed report',
+            'download report', 'download reports', 'generated reports', 'full report',
+            'export report', 'market report', 'intelligence report', 'feasibility report',
+            'view reports', 'show reports', 'open reports', 'go to reports'
+        ],
+        description: '📄 **Generated Business Intelligence Reports (PDF)**\n\nDownload executive-grade PDF reports for any analyzed location:\n• **Feasibility & Viability Score**: Algorithmic ROI rating.\n• **Footfall & Demographic Analysis**: Exact crowd metrics, peak times, and customer profiles.\n• **SWOT Matrix & Competitor Mapping**: Highlights strengths, risks, and market gaps.\n• Generated reports are permanently saved in your **Favorites** tab for quick download anytime.',
+        actionLabel: '📄 Open Reports Hub',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|launch|take\s+me\s+to|download|view)\s+)?(?:the\s+)?(?:generated\s+)?(?:business\s+)?(?:pdf\s+)?(?:reports?)(?:\s+(?:section|hub|tab))?$/i
+    },
+    {
+        key: 'popular-places',
+        title: 'Popular Places Radar (Nearby POIs)',
+        category: 'Map Tool',
+        icon: 'fas fa-store',
+        synonyms: [
+            'popular places', 'popular place', 'nearby', 'nearby places', 'poi', 'points of interest',
+            'shops', 'stores', 'cafes near me', 'restaurants near me', 'explore places',
+            'radar', 'commercial places', 'nearby businesses'
+        ],
+        description: '📍 **Popular Places Radar**\n\nScans around any coordinate or selected neighborhood to locate commercial points of interest:\n• Discover established competitors, cafes, retail hubs, supermarkets, and gyms.\n• Analyze local footfall anchors.\n• Click any business card to highlight its pin or save it to your Favorites.',
+        actionLabel: '📍 Scan Popular Places',
+        directCommandRegex: /^(?:(?:find|search|scan|show|open|go\s+to)\s+)?(?:the\s+)?(?:nearby\s+)?popular\s+places(?:\s+radar)?$/i
+    },
+    {
+        key: 'find-location',
+        title: 'Find My Location (GPS)',
+        category: 'Location Tool',
+        icon: 'fas fa-crosshairs',
+        synonyms: [
+            'find my location', 'my location', 'locate me', 'where am i', 'current location',
+            'gps', 'locate', 'find me', 'pin my location', 'gps location', 'here',
+            'detect location', 'track location'
+        ],
+        description: '📡 **Find My Location (GPS)**\n\nUses browser geolocation to instantly center the map on your exact coordinates:\n• Inspect immediate pedestrian crowd density circles.\n• Discover nearby commercial businesses around you.\n• Check feasibility of opening a business right at your current spot.',
+        actionLabel: '📡 Locate Me Now',
+        directCommandRegex: /^(?:(?:find|show|get|track|pin)\s+)?(?:my\s+)?(?:current\s+)?location|where\s+am\s+i|locate\s+me$/i
+    },
+    {
+        key: 'revenue',
+        title: 'Revenue Intelligence',
+        category: 'Financial Tool',
+        icon: 'fas fa-coins',
+        synonyms: [
+            'revenue', 'revenue intelligence', 'earnings', 'income', 'profit', 'projections',
+            'financial', 'sales', 'forecast', 'flashcards', 'business flashcards', 'turnover',
+            'money', 'roi'
+        ],
+        description: '💰 **Revenue Intelligence**\n\nCalculates financial potential based on local traffic and business sector benchmarks:\n• **Projected Daily & Monthly Turnover**: Based on footfall conversion models.\n• **Break-Even Analysis**: Compares startup investment against projected margins.\n• **Opportunity Index**: Identifies high-margin niches.',
+        actionLabel: '💰 View Revenue Projections',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|view)\s+)?(?:revenue|revenue\s+intelligence|financial\s+projections)(?:\s+(?:page|flashcards))?$/i
+    },
+    {
+        key: 'dashboard',
+        title: 'Dashboard Overview',
+        category: 'Navigation',
+        icon: 'fas fa-th-large',
+        synonyms: [
+            'dashboard', 'launchpad', 'main dashboard', 'control center', 'overview',
+            'home dashboard', 'go to dashboard', 'open dashboard'
+        ],
+        description: '🚀 **Dashboard Launchpad**\n\nThe central launchpad gives you direct access to all core platform features:\n• Live Heatmap & Crowd Circles\n• AI Business Recommendations & Market Demand Analytics\n• Startup Planning Form & Feasibility Engine\n• Quick statistics and platform telemetry.',
+        actionLabel: '🚀 Open Dashboard',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|view)\s+)?(?:the\s+)?dashboard$/i
+    },
+    {
+        key: 'home',
+        title: 'Homepage',
+        category: 'Navigation',
+        icon: 'fas fa-home',
+        synonyms: [
+            'home', 'homepage', 'landing page', 'main map', 'front page', 'go home', 'open home'
+        ],
+        description: '🏠 **Homepage**\n\nThe homepage provides a full-window map canvas, instant location search, and quick access to platform tools.',
+        actionLabel: '🏠 Go to Homepage',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|view)\s+)?(?:the\s+)?(?:home|homepage|landing\s+page)$/i
+    },
+    {
+        key: 'profile',
+        title: 'Account & Profile Settings',
+        category: 'Account',
+        icon: 'fas fa-user-circle',
+        synonyms: [
+            'profile', 'account', 'settings', 'user', 'sign in', 'login', 'logout',
+            'supabase', 'auth', 'my account', 'account settings'
+        ],
+        description: '👤 **Account & Profile**\n\nManage your user profile, Supabase Cloud authentication, and synced preferences.\n• Access protected reports and saved custom analyses across sessions.',
+        actionLabel: '👤 Open Profile',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|view)\s+)?(?:the\s+)?(?:profile|account|account\s+settings)$/i
+    },
+    {
+        key: 'contact',
+        title: 'Contact Us & Support',
+        category: 'Support',
+        icon: 'fas fa-envelope',
+        synonyms: [
+            'contact', 'contact us', 'support', 'help', 'email', 'feedback', 'team',
+            'help desk', 'customer support'
+        ],
+        description: '✉️ **Contact Support**\n\nNeed enterprise consulting, custom GIS data feeds, or have feedback?\n• Reach out to our Business Intelligence team directly through our Contact portal.',
+        actionLabel: '✉️ Contact Us',
+        directCommandRegex: /^(?:(?:go\s+to|open|show|view)\s+)?(?:the\s+)?(?:contact|contact\s+us|support|help)$/i
+    }
+];
+
+function findBestSiteFeatureMatch(rawQuery) {
+    if (!rawQuery || typeof rawQuery !== 'string') return null;
+    const query = rawQuery.trim().toLowerCase().replace(/[?!.,;]/g, '');
+    if (!query) return null;
+
+    // 1. Direct Regex Match (Exact navigation commands)
+    for (const item of SITE_FEATURES_KNOWLEDGE) {
+        if (item.directCommandRegex && item.directCommandRegex.test(query)) {
+            return { item, isExplicitNavigation: true };
+        }
+    }
+
+    // 2. Keyword & Synonyms Scoring
+    const queryWords = query.split(/\s+/).filter(w => w.length > 1);
+    let bestMatch = null;
+    let highestScore = 0;
+    const hasNavVerb = /\b(go to|open|show|launch|take me to|navigate to|redirect to|view|bring me to)\b/i.test(rawQuery);
+
+    for (const item of SITE_FEATURES_KNOWLEDGE) {
+        let score = 0;
+
+        // Exact match with key or title
+        if (query === item.key || query === item.title.toLowerCase()) {
+            score += 10;
+        }
+
+        // Substring match in title or synonyms
+        for (const syn of item.synonyms) {
+            if (query === syn) {
+                score += 8;
+            } else if (query.includes(syn)) {
+                score += 5;
+            } else if (syn.includes(query) && query.length >= 3) {
+                score += 4;
+            }
+        }
+
+        // Individual word hits
+        for (const word of queryWords) {
+            for (const syn of item.synonyms) {
+                if (syn.includes(word) && word.length >= 3) {
+                    score += 2;
+                }
+            }
+        }
+
+        if (score > highestScore) {
+            highestScore = score;
+            bestMatch = item;
+        }
+    }
+
+    if (bestMatch && highestScore >= 4) {
+        return { item: bestMatch, isExplicitNavigation: hasNavVerb || highestScore >= 8 };
+    }
+
+    return null;
+}
+
+function navigateToFeature(featureKey) {
+    console.log('Navigating to feature:', featureKey);
+    const isDashboard = window.location.pathname.includes('/dashboard');
+
+    switch (featureKey) {
+        case 'map':
+        case 'heatmap':
+            if (isDashboard) {
+                const mapBtn = document.getElementById('btn-show-map');
+                const sidebarHeatmapLink = document.getElementById('sidebar-heatmap-link');
+                if (mapBtn) {
+                    mapBtn.click();
+                } else if (sidebarHeatmapLink) {
+                    sidebarHeatmapLink.click();
+                }
+            } else {
+                window.location.href = '/dashboard/?auto_map=true';
+            }
+            break;
+
+        case 'analytics':
+        case 'ai-recommender':
+            if (isDashboard) {
+                const aiBtn = document.getElementById('btn-show-ai-recommender');
+                const sidebarAiLink = document.getElementById('sidebar-ai-link');
+                if (typeof openDashboardDataOnlyMode === 'function') {
+                    openDashboardDataOnlyMode('ai');
+                } else if (sidebarAiLink) {
+                    sidebarAiLink.click();
+                } else if (aiBtn) {
+                    aiBtn.click();
+                }
+            } else {
+                window.location.href = '/dashboard/?ai=true';
+            }
+            break;
+
+        case 'startup-form':
+        case 'form':
+            if (isDashboard) {
+                const sidebarStartupLink = document.getElementById('sidebar-startup-form-link');
+                const launchpadStartupBtn = document.getElementById('btn-show-startup-form-from-launchpad');
+                if (sidebarStartupLink) {
+                    sidebarStartupLink.click();
+                } else if (launchpadStartupBtn) {
+                    launchpadStartupBtn.click();
+                }
+            } else {
+                const formModal = document.getElementById('form-modal');
+                if (formModal) {
+                    formModal.style.display = 'block';
+                } else {
+                    window.location.href = '/dashboard/';
+                }
+            }
+            break;
+
+        case 'favorites':
+        case 'saved':
+            window.location.href = '/favorites/';
+            break;
+
+        case 'reports':
+            window.location.href = '/favorites/';
+            break;
+
+        case 'dashboard':
+        case 'launchpad':
+            if (isDashboard) {
+                const backBtn = document.getElementById('btn-back-to-dashboard') || document.getElementById('sidebar-dashboard-link');
+                if (backBtn) backBtn.click();
+            } else {
+                window.location.href = '/dashboard/';
+            }
+            break;
+
+        case 'home':
+            window.location.href = '/';
+            break;
+
+        case 'popular-places':
+            if (isDashboard) {
+                const mapBtn = document.getElementById('btn-show-map');
+                if (mapBtn) mapBtn.click();
+                setTimeout(() => {
+                    const popBtn = document.getElementById('popular-places-btn') || document.getElementById('dash-popular-places-btn');
+                    if (popBtn) popBtn.click();
+                }, 350);
+            } else {
+                const popBtn = document.getElementById('popular-places-btn');
+                if (popBtn) popBtn.click();
+            }
+            break;
+
+        case 'find-location':
+            const findBtn = document.getElementById('find-location-btn') || document.getElementById('dash-find-location-btn');
+            if (findBtn) {
+                findBtn.click();
+            } else {
+                window.location.href = '/dashboard/?auto_map=true';
+            }
+            break;
+
+        case 'revenue':
+            if (isDashboard) {
+                const flashBtn = document.getElementById('btn-show-flashcards');
+                if (flashBtn) {
+                    flashBtn.click();
+                } else if (typeof openDashboardDataOnlyMode === 'function') {
+                    openDashboardDataOnlyMode('recs');
+                }
+            } else {
+                window.location.href = '/dashboard/?ai=true';
+            }
+            break;
+
+        case 'profile':
+            window.location.href = '/profile/';
+            break;
+
+        case 'contact':
+            window.location.href = '/contact-us/';
+            break;
+
+        default:
+            console.warn('Unknown feature key for navigation:', featureKey);
+    }
+}
+
 // Handle structured AI actions securely
 function handleStructuredChatAction(action) {
-    if (!action || !action.intent) return;
+    if (!action) return;
+    if (typeof action === 'string') {
+        navigateToFeature(action);
+        return;
+    }
+    const intent = action.intent || '';
+    if (intent === 'navigate_feature' || action.featureKey) {
+        navigateToFeature(action.featureKey || intent);
+        return;
+    }
     console.log('Executing structured AI action:', action);
     
-    const intent = action.intent;
     const locName = action.location || '';
     const bType = action.business_type || '';
 
@@ -2144,40 +2524,13 @@ function hideTypingIndicator() {
 // Notify chat when a map action happens (links map buttons to chatbot)
 function notifyChatFromMap(message) {
     addChatMessage(message, 'bot');
-
-    // Smart Suggestions based on map actions
-    if (message.includes('Location set') || message.includes('Searching the map')) {
-        renderChatbotSuggestions([
-            { text: '🏢 Check Feasibility', command: 'open cafe in this area' },
-            { text: '📍 Popular Places', command: 'popular places' },
-            { text: '📋 Open Form', command: 'open form' }
-        ]);
-    } else if (message.includes('feasibility')) {
-        renderChatbotSuggestions([
-            { text: '📈 View Heatmap', command: 'maximize map' },
-            { text: '📋 Submit Info', command: 'open form' },
-            { text: '🔍 Search Nearby', command: 'popular places' }
-        ]);
-    } else if (message.includes('Finding your location')) {
-        renderChatbotSuggestions([
-            { text: '📍 Nearby Popular Places', command: 'popular places' },
-            { text: '🏢 Check Cafe Feasibility', command: 'open cafe in this area' },
-            { text: '📋 Open Business Form', command: 'open form' }
-        ]);
-    } else if (message.includes('Business feasibility commands')) {
-        renderChatbotSuggestions([
-            { text: '🏢 Cafe in Koramangala', command: 'open cafe in Koramangala' },
-            { text: '🏬 Pharmacy in Indiranagar', command: 'check pharmacy feasibility in Indiranagar' },
-            { text: '🍽 Restaurant in HSR Layout', command: 'is restaurant feasible in HSR Layout' }
-        ]);
-    }
 }
 
 // Chatbot send message
-// Chatbot send button listener handled in initGlobalFloatingUI
-
-safeOn('chatbot-input', 'keypress', function (e) {
-    if (e.key === 'Enter') {
+// Global delegated Enter key listener for chatbot input
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target && e.target.id === 'chatbot-input') {
+        e.preventDefault();
         sendChatMessage();
     }
 });
@@ -2411,14 +2764,6 @@ function handleChatCommand(message) {
             searchBtn.click();
         }
 
-        setTimeout(() => {
-            renderChatbotSuggestions([
-                { text: `🏢 Start business in ${query}`, command: `analyze ${query}` },
-                { text: `📉 Popular places in ${query}`, command: `popular places in ${query}` },
-                { text: '❓ What can I do here?', command: `tell me about ${query}` }
-            ]);
-        }, 1500);
-
         return {
             handled: true,
             feedback: `🔎 Searching the map for "${query}"...`,
@@ -2483,6 +2828,54 @@ function handleChatCommand(message) {
     return { handled: false };
 }
 
+// Friendly conversational responses (instant answers like Gemini & ChatGPT)
+function getFriendlyChatResponse(rawQuery) {
+    if (!rawQuery || typeof rawQuery !== 'string') return null;
+    const clean = rawQuery.trim().toLowerCase().replace(/[^\w\s]/g, '');
+
+    // Name & Identity queries
+    if (/\b(what\s+is\s+your\s+name|whats\s+your\s+name|what\s+is\s+ur\s+name|whats\s+ur\s+name|what\s+ur\s+name|your\s+name|ur\s+name|who\s+are\s+you|who\s+r\s+u|tell\s+me\s+your\s+name)\b/i.test(clean)) {
+        return "Hey there! 😊 I'm **AI Assistant**, your smart location intelligence co-pilot and business partner! You can chat with me just like a friend. I can help you evaluate crowd density, scout locations, check feasibility, or navigate anywhere on the platform. What's on your mind today?";
+    }
+
+    // Greetings
+    if (/^(hi|hello|hey|heya|hola|yo|sup|howdy|good\s+morning|good\s+afternoon|good\s+evening)$/i.test(clean) || /^(hi|hello|hey|yo)\b/i.test(clean)) {
+        return "Hey! 👋 Great to chat with you! How's your day going? Feel free to ask me anything about the platform, locations, or tell me what business ideas you're exploring!";
+    }
+
+    // How are you
+    if (/\b(how\s+are\s+you|how\s+r\s+u|how\s+are\s+you\s+doing|hows\s+it\s+going|whats\s+up|how\s+do\s+you\s+do)\b/i.test(clean)) {
+        return "I'm doing fantastic, thanks for asking! 😊 Always excited to help you scout great locations and explore business feasibility. How are you doing today?";
+    }
+
+    // Be friends
+    if (/\b(can\s+we\s+be\s+friends|be\s+my\s+friend|are\s+we\s+friends|lets\s+be\s+friends)\b/i.test(clean)) {
+        return "Of course we can! 🤝 I'd love to be your friend and business brainstorming buddy. Tell me, what kind of venture or ideas are you passionate about?";
+    }
+
+    // Jokes
+    if (/\b(tell\s+me\s+a\s+joke|joke|make\s+me\s+laugh|say\s+something\s+funny)\b/i.test(clean)) {
+        return "Why did the coffee shop open next to the gym? Because they knew the customers loved an extra shot of energy! ☕💪 What kind of business would you love to start?";
+    }
+
+    // Gratitude
+    if (/\b(thank\s+you|thanks|thx|thank\s+u|appreciate\s+it)\b/i.test(clean)) {
+        return "You're very welcome! Always happy to help a friend. 😊 Let me know anytime you want to check another spot or view the heatmap!";
+    }
+
+    // Affirmations
+    if (/^(cool|awesome|nice|great|good|super|amazing|ok|okay|got\s+it)$/i.test(clean)) {
+        return "Awesome! 👍 Whenever you're ready, ask me about any area, or let me know if you want to jump to the map, analytics, or reports!";
+    }
+
+    // Who created you
+    if (/\b(who\s+created\s+you|who\s+made\s+you|who\s+built\s+you|who\s+is\s+your\s+creator)\b/i.test(clean)) {
+        return "I was built by the Business Intelligence team using real-time spatial analytics and dual-AI intelligence to make finding profitable business locations effortless! 🧠✨";
+    }
+
+    return null;
+}
+
 function sendChatMessage() {
     const input = document.getElementById('chatbot-input');
     const message = input.value.trim();
@@ -2490,6 +2883,12 @@ function sendChatMessage() {
 
     addChatMessage(message, 'user');
     input.value = '';
+
+    const searchPreview = document.getElementById('chatbot-search-preview');
+    if (searchPreview) {
+        searchPreview.classList.add('d-none');
+        searchPreview.innerHTML = '';
+    }
 
     // If the whole message is wrapped in double quotes, treat the
     // quoted text as an explicit "command string" for the map.
@@ -2511,21 +2910,54 @@ function sendChatMessage() {
         }
     }
 
-    // If chat command triggered a map/form action, show feedback so user sees the map/form is being initiated.
-    // We always feed the (possibly deâ€‘quoted) commandText into the parser,
-    // so that text inside "..." is interpreted as a precise map command.
+    // 1. Business feasibility check (e.g. "open cafe in Koramangala")
     const result = handleChatCommand(commandText);
     if (result.handled && result.feedback) {
         notifyChatFromMap(result.feedback);
     }
-
-    // For some flows (like the AI business planner) we intentionally
-    // skip sending the same text to the LLM backend to avoid a long,
-    // generic essay answer instead of the guided map interaction.
     if (result.handled && result.suppressLLM) {
         return;
     }
 
+    // 2. Instant Website Features Knowledge Match & Fast Redirect
+    const match = findBestSiteFeatureMatch(commandText);
+    if (match && match.item) {
+        showTypingIndicator();
+        setTimeout(() => {
+            hideTypingIndicator();
+            const actions = [
+                {
+                    intent: 'navigate_feature',
+                    featureKey: match.item.key,
+                    label: match.item.actionLabel
+                }
+            ];
+            let responseText = match.item.description;
+            if (match.isExplicitNavigation) {
+                responseText += `\n\n⚡ *Redirecting to **${match.item.title}** now...*`;
+                addChatMessage(responseText, 'bot', actions);
+                setTimeout(() => {
+                    navigateToFeature(match.item.key);
+                }, 350);
+            } else {
+                addChatMessage(responseText, 'bot', actions);
+            }
+        }, 80);
+        return;
+    }
+
+    // 2.5 Friendly Conversational Chat (instant responses like Gemini & ChatGPT)
+    const friendlyReply = getFriendlyChatResponse(commandText);
+    if (friendlyReply) {
+        showTypingIndicator();
+        setTimeout(() => {
+            hideTypingIndicator();
+            addChatMessage(friendlyReply, 'bot');
+        }, 70);
+        return;
+    }
+
+    // 3. Fallback to Dual-AI WebSocket / Backend LLM
     showTypingIndicator();
 
     const selectedLoc = typeof getSelectedLocation === 'function' ? getSelectedLocation() : null;
@@ -2614,17 +3046,10 @@ function initGlobalFloatingUI() {
     if (document.getElementById('chatbot-messages')) {
         connectChatbot();
 
-        // Add welcome message and initial suggestions if container exists
+        // Add welcome message
         setTimeout(() => {
-            addChatMessage("👋 Hello! I'm Antigravity, your map assistant. I can help you find locations, locate you, and check business feasibility. What should we do first?", 'bot');
-            renderChatbotSuggestions([
-                { text: '📍 Find My Location', command: 'find my location' },
-                { text: '🔎 Search Bangalore', command: 'search for Bangalore' },
-                { text: '🏢 Check Feasibility', command: 'open cafe in Koramangala' },
-                { text: '📋 Open Business Form', command: 'open form' },
-                { text: '🤖 Show Commands', command: 'help' }
-            ]);
-        }, 1000);
+            addChatMessage("👋 **Hello! I'm your AI Business Intelligence Assistant.**\n\nI can answer questions about any feature on this platform, analyze business feasibility, or instantly take you to any page.\n\n*Try asking:*\n• *\"Take me to the map\"* or *\"Show crowd heatmap\"*\n• *\"Open business analytics\"* or *\"Where are my reports?\"*\n• *\"Is a cafe feasible in Koramangala?\"*", 'bot');
+        }, 600);
     }
 
     // Global Action Button Listeners
@@ -2687,26 +3112,91 @@ function initGlobalFloatingUI() {
     safeOn('chatbot-send', 'click', function () {
         sendChatMessage();
     });
-}
 
-function renderChatbotSuggestions(suggestions) {
-    const container = document.getElementById('chatbot-suggestions-container');
-    if (!container) return;
-
-    container.innerHTML = '';
-    suggestions.forEach(s => {
-        const chip = document.createElement('button');
-        chip.className = 'suggestion-chip';
-        chip.innerHTML = s.text;
-        chip.addEventListener('click', () => {
-            const input = document.getElementById('chatbot-input');
-            if (input) {
-                input.value = s.command;
+    const chatInput = document.getElementById('chatbot-input');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
                 sendChatMessage();
             }
         });
-        container.appendChild(chip);
-    });
+    }
+
+    // Chatbot Live Search Preview as user types
+    const searchPreview = document.getElementById('chatbot-search-preview');
+
+    if (chatInput && searchPreview) {
+        chatInput.addEventListener('input', debounce(function () {
+            const val = this.value.trim().toLowerCase();
+            if (val.length < 2) {
+                searchPreview.classList.add('d-none');
+                searchPreview.innerHTML = '';
+                return;
+            }
+
+            const matches = [];
+            for (const item of SITE_FEATURES_KNOWLEDGE) {
+                if (item.title.toLowerCase().includes(val) || 
+                    item.key.includes(val) || 
+                    item.synonyms.some(s => s.includes(val))) {
+                    matches.push(item);
+                    if (matches.length >= 4) break;
+                }
+            }
+
+            if (matches.length === 0) {
+                searchPreview.classList.add('d-none');
+                searchPreview.innerHTML = '';
+                return;
+            }
+
+            searchPreview.innerHTML = `
+                <div class="search-preview-header">
+                    <span><i class="fas fa-bolt text-warning me-1"></i> Quick Jump to Feature</span>
+                </div>
+                <div class="search-preview-list">
+                    ${matches.map(m => `
+                        <div class="search-preview-item" data-key="${m.key}">
+                            <div class="preview-item-left">
+                                <i class="${m.icon} preview-icon"></i>
+                                <div>
+                                    <div class="preview-title">${m.title}</div>
+                                    <div class="preview-category">${m.category}</div>
+                                </div>
+                            </div>
+                            <span class="preview-jump-btn">Go &rarr;</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            searchPreview.classList.remove('d-none');
+        }, 60));
+
+        searchPreview.addEventListener('click', function (e) {
+            const item = e.target.closest('.search-preview-item');
+            if (item) {
+                const key = item.getAttribute('data-key');
+                searchPreview.classList.add('d-none');
+                searchPreview.innerHTML = '';
+                chatInput.value = '';
+                navigateToFeature(key);
+            }
+        });
+
+        // Hide preview on outside click
+        document.addEventListener('click', function (e) {
+            if (!chatInput.contains(e.target) && !searchPreview.contains(e.target)) {
+                searchPreview.classList.add('d-none');
+            }
+        });
+    }
+}
+
+function renderChatbotSuggestions(suggestions) {
+    // Quick-action chips removed per user request. Kept empty for backwards compatibility.
+    const container = document.getElementById('chatbot-suggestions-container');
+    if (container) container.innerHTML = '';
 }
 
 // --- Autocomplete for form location field ---
@@ -3528,16 +4018,16 @@ async function updateCrowdIntensityDropdown(lat, lon) {
                 data.high_intensity.forEach(area => {
                     if (_dist(lat, lon, area.latitude, area.longitude) > 2000) return;
                     const heatmapCircle = L.circle([area.latitude, area.longitude], {
-                        radius: 800,
+                        radius: 420,
                         color: '#1a3a6e',
                         fillColor: '#ff0000',
-                        fillOpacity: 0.35,
+                        fillOpacity: 0.25,
                         weight: 2
                     }).addTo(map).bindPopup(`<b>High Intensity Area</b><br>${area.count} Points of Interest`);
                     heatmapLayers.push(heatmapCircle);
 
                     const marker = L.circleMarker([area.latitude, area.longitude], {
-                        radius: 12,
+                        radius: 8,
                         color: '#1a3a6e',
                         fillColor: '#ff0000',
                         fillOpacity: 0.9,
@@ -3584,16 +4074,16 @@ async function updateCrowdIntensityDropdown(lat, lon) {
                 data.medium_intensity.forEach(area => {
                     if (_dist(lat, lon, area.latitude, area.longitude) > 2000) return;
                     const heatmapCircle = L.circle([area.latitude, area.longitude], {
-                        radius: 600,
+                        radius: 300,
                         color: '#1a6ea8',
                         fillColor: '#ffaa00',
-                        fillOpacity: 0.28,
+                        fillOpacity: 0.22,
                         weight: 2
                     }).addTo(map).bindPopup(`<b>Medium Intensity Area</b><br>${area.count} Points of Interest`);
                     heatmapLayers.push(heatmapCircle);
 
                     const marker = L.circleMarker([area.latitude, area.longitude], {
-                        radius: 10,
+                        radius: 7,
                         color: '#1a6ea8',
                         fillColor: '#ffaa00',
                         fillOpacity: 0.9,
@@ -3613,16 +4103,16 @@ async function updateCrowdIntensityDropdown(lat, lon) {
                 data.low_intensity.forEach(area => {
                     if (_dist(lat, lon, area.latitude, area.longitude) > 2000) return;
                     const heatmapCircle = L.circle([area.latitude, area.longitude], {
-                        radius: 400,
+                        radius: 200,
                         color: '#1a7a8a',
                         fillColor: '#00cc00',
-                        fillOpacity: 0.22,
+                        fillOpacity: 0.18,
                         weight: 2
                     }).addTo(map).bindPopup(`<b>Low Intensity Area</b><br>${area.count} Points of Interest`);
                     heatmapLayers.push(heatmapCircle);
 
                     const marker = L.circleMarker([area.latitude, area.longitude], {
-                        radius: 8,
+                        radius: 6,
                         color: '#1a7a8a',
                         fillColor: '#00cc00',
                         fillOpacity: 0.9,
@@ -3869,15 +4359,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let dashboardMap = null;
 
+function setActiveSidebarLink(targetId) {
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    const target = document.getElementById(targetId);
+    if (target) {
+        target.classList.add('active');
+    }
+}
+window.setActiveSidebarLink = setActiveSidebarLink;
+
 function initDashboardInteractions() {
     const showMapBtn = document.getElementById('btn-show-map');
     const backToDashboardBtn = document.getElementById('btn-back-to-dashboard');
     const launchpad = document.getElementById('dashboard-launchpad');
     const dynamicMapContainer = document.getElementById('dynamic-map-container');
 
+    const sidebarDashboardLink = document.getElementById('sidebar-dashboard-link');
+    if (sidebarDashboardLink) {
+        sidebarDashboardLink.addEventListener('click', (e) => {
+            if (isDashboardPage()) {
+                e.preventDefault();
+                setActiveSidebarLink('sidebar-dashboard-link');
+                if (dynamicMapContainer) dynamicMapContainer.classList.add('d-none');
+                // Remove map-active so padding/scroll is restored
+                const dashMain = document.querySelector('.dashboard-main');
+                if (dashMain) dashMain.classList.remove('map-active');
+                // Restore dashboard header
+                const dashHeader = document.querySelector('.dashboard-header');
+                if (dashHeader) dashHeader.classList.remove('d-none');
+                const analyticsSection = document.getElementById('dashboard-analytics-section');
+                if (analyticsSection) analyticsSection.classList.add('d-none');
+                const startupFormSection = document.getElementById('dashboard-startup-form-section');
+                if (startupFormSection) startupFormSection.classList.add('d-none');
+                if (launchpad) launchpad.classList.remove('d-none');
+                const bgAnimation = document.getElementById('bg-animation');
+                if (bgAnimation) bgAnimation.style.display = 'block';
+
+                const params = new URLSearchParams(window.location.search);
+                params.delete('auto_map');
+                params.delete('ai');
+                const queryStr = params.toString() ? `?${params.toString()}` : '';
+                window.history.replaceState({}, '', `${window.location.pathname}${queryStr}`);
+            }
+        });
+    }
+
     if (showMapBtn) {
         showMapBtn.addEventListener('click', () => {
             const openMap = () => {
+                setActiveSidebarLink('sidebar-heatmap-link');
                 if (launchpad) launchpad.classList.add('d-none');
                 if (!isBusinessRecommendationsMode()) {
                     const aiPanel = document.getElementById('business-intelligence-panel');
@@ -3885,6 +4417,14 @@ function initDashboardInteractions() {
                 }
                 if (dynamicMapContainer) {
                     dynamicMapContainer.classList.remove('d-none');
+                    // Add map-active to remove padding/scroll from the parent
+                    const dashMain = document.querySelector('.dashboard-main');
+                    if (dashMain) dashMain.classList.add('map-active');
+                    // Explicitly hide the dashboard header to eliminate the gap
+                    const dashHeader = document.querySelector('.dashboard-header');
+                    if (dashHeader) dashHeader.classList.add('d-none');
+                    // Scroll to top so map bar sits flush against navbar
+                    window.scrollTo(0, 0);
                     initDynamicDashboardMap();
                     if (dashboardMap) {
                         setTimeout(() => dashboardMap.invalidateSize(), 150);
@@ -3999,14 +4539,27 @@ function initDashboardInteractions() {
     if (sidebarHeatmapLink) {
         sidebarHeatmapLink.addEventListener('click', (e) => {
             e.preventDefault();
-            if (window.requireSupabaseAuth) {
-                window.requireSupabaseAuth('Heatmap Analytics', () => {
-                    const primaryMapBtn = document.getElementById('btn-show-map');
-                    if (primaryMapBtn) primaryMapBtn.click();
-                });
-            } else {
+            setActiveSidebarLink('sidebar-heatmap-link');
+            const openMap = () => {
+                setActiveSidebarLink('sidebar-heatmap-link');
+                const startupFormSection = document.getElementById('dashboard-startup-form-section');
+                if (startupFormSection) startupFormSection.classList.add('d-none');
+                const analyticsSection = document.getElementById('dashboard-analytics-section');
+                if (analyticsSection) analyticsSection.classList.add('d-none');
+
                 const primaryMapBtn = document.getElementById('btn-show-map');
                 if (primaryMapBtn) primaryMapBtn.click();
+
+                const params = new URLSearchParams(window.location.search);
+                params.set('auto_map', 'true');
+                params.delete('ai');
+                window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+            };
+
+            if (window.requireSupabaseAuth) {
+                window.requireSupabaseAuth('Map', openMap);
+            } else {
+                openMap();
             }
         });
     }
@@ -4015,12 +4568,19 @@ function initDashboardInteractions() {
     if (sidebarAiLink) {
         sidebarAiLink.addEventListener('click', (e) => {
             e.preventDefault();
+            setActiveSidebarLink('sidebar-ai-link');
+            const openAi = async () => {
+                setActiveSidebarLink('sidebar-ai-link');
+                const startupFormSection = document.getElementById('dashboard-startup-form-section');
+                if (startupFormSection) startupFormSection.classList.add('d-none');
+
+                await openDashboardDataOnlyMode('ai');
+            };
+
             if (window.requireSupabaseAuth) {
-                window.requireSupabaseAuth('Business Recommendations', async () => {
-                    await openDashboardDataOnlyMode('ai');
-                });
+                window.requireSupabaseAuth('Business Recommendations', openAi);
             } else {
-                openDashboardDataOnlyMode('ai');
+                openAi();
             }
         });
     }
@@ -4117,12 +4677,24 @@ function initDashboardInteractions() {
 
     if (backToDashboardBtn) {
         backToDashboardBtn.addEventListener('click', () => {
+            setActiveSidebarLink('sidebar-dashboard-link');
             if (dynamicMapContainer) dynamicMapContainer.classList.add('d-none');
+            const dashMain = document.querySelector('.dashboard-main');
+            if (dashMain) dashMain.classList.remove('map-active');
+            // Restore dashboard header
+            const dashHeader = document.querySelector('.dashboard-header');
+            if (dashHeader) dashHeader.classList.remove('d-none');
             const analyticsSection = document.getElementById('dashboard-analytics-section');
             if (analyticsSection) analyticsSection.classList.add('d-none');
             const startupFormSection = document.getElementById('dashboard-startup-form-section');
             if (startupFormSection) startupFormSection.classList.add('d-none');
             if (launchpad) launchpad.classList.remove('d-none');
+
+            const params = new URLSearchParams(window.location.search);
+            params.delete('auto_map');
+            params.delete('ai');
+            const queryStr = params.toString() ? `?${params.toString()}` : '';
+            window.history.replaceState({}, '', `${window.location.pathname}${queryStr}`);
         });
     }
 
@@ -4136,6 +4708,8 @@ function initDashboardInteractions() {
             if (analyticsSection) analyticsSection.classList.add('d-none');
             const dynamicMapContainer = document.getElementById('dynamic-map-container');
             if (dynamicMapContainer) dynamicMapContainer.classList.add('d-none');
+            const dashMain = document.querySelector('.dashboard-main');
+            if (dashMain) dashMain.classList.remove('map-active');
             if (launchpad) launchpad.classList.remove('d-none');
 
             // Show global elements again
@@ -4390,8 +4964,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const triggerMap = (window.location.hash === '#map' || urlParams.get('auto_map') === 'true');
     const triggerAi = (urlParams.get('ai') === 'true');
 
+    if (triggerMap) {
+        setActiveSidebarLink('sidebar-heatmap-link');
+        const dashMain = document.querySelector('.dashboard-main');
+        if (dashMain) dashMain.classList.add('map-active');
+    } else if (triggerAi) {
+        setActiveSidebarLink('sidebar-ai-link');
+    } else {
+        setActiveSidebarLink('sidebar-dashboard-link');
+    }
+
     if (triggerMap && document.getElementById('btn-show-map')) {
         setTimeout(() => {
+            setActiveSidebarLink('sidebar-heatmap-link');
             if (window.requireSupabaseAuth) {
                 window.requireSupabaseAuth('Live Crowd Heatmap', () => {
                     document.getElementById('btn-show-map').click();
@@ -4402,6 +4987,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200);
     } else if (triggerAi && document.getElementById('btn-show-ai-recommender')) {
         setTimeout(() => {
+            setActiveSidebarLink('sidebar-ai-link');
             if (window.requireSupabaseAuth) {
                 window.requireSupabaseAuth('AI Business Recommender', () => {
                     document.getElementById('btn-show-ai-recommender').click();

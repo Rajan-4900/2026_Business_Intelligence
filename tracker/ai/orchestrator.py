@@ -223,31 +223,100 @@ def process_user_query(
         reply['structured_actions'] = [a for a in (validate_structured_action(x) for x in reply['structured_actions']) if a]
         return reply
 
-    # Step 1: Validate Query Relevance (Strict Domain Scope)
-    if not is_platform_relevant(sanitized_query):
+    # Step 1: Handle Friendly Conversational Chat, Greetings & Identity (Instant responses like Gemini/ChatGPT)
+    lower = sanitized_query.lower().strip()
+    clean_lower = re.sub(r'[^\w\s]', '', lower)
+
+    # 1a. Name & Identity
+    if any(p in clean_lower for p in ['what is your name', 'whats your name', 'what is ur name', 'whats ur name', 'your name', 'ur name', 'who are you', 'who r u']):
         return {
             "success": True,
-            "message": OUT_OF_SCOPE_RESPONSE,
+            "message": "Hey there! 😊 I'm **AI Assistant**, your smart location intelligence co-pilot and business partner! You can chat with me just like a friend. I can help you evaluate crowd density, scout locations, check feasibility, or navigate anywhere on the platform. What's on your mind today?",
             "structured_actions": [
                 {"intent": "view_heatmap", "label": "🔥 View Heatmap"},
                 {"intent": "open_dashboard", "label": "📈 Open Dashboard"},
             ]
         }
 
-    # Step 2: Handle Simple Greetings / Identity
-    lower = sanitized_query.lower().strip()
-    if lower in ['hi', 'hello', 'hey', 'greetings', 'who are you', 'what can you do', 'help']:
+    # 1b. Greetings
+    if lower in ['hi', 'hello', 'hey', 'heya', 'hola', 'yo', 'sup', 'howdy', 'good morning', 'good afternoon', 'good evening'] or re.search(r'^(hi|hello|hey|yo)\b', lower):
         return {
             "success": True,
-            "message": """👋 **Hello! I'm Antigravity**, your Dual-AI Location Intelligence Assistant.
+            "message": "Hey! 👋 Great to chat with you! How's your day going? Feel free to ask me anything about the platform, locations, or tell me what business ideas you're exploring!",
+            "structured_actions": [
+                {"intent": "view_heatmap", "label": "🔥 View Heatmap"},
+                {"intent": "open_dashboard", "label": "📈 Open Dashboard"},
+            ]
+        }
 
-Powered by **Gemini** (Primary Spatial Intelligence) & **Grok** (Critical Risk Review), I help you:
-• Evaluate crowd density and footfall across India 📍
-• Predict high-performing business types for any area 🏢
-• Forecast monthly revenues and analyze competitive saturation 💰
-• Stress-test your location decision with independent risk reviews ⚡
+    # 1c. How are you / Friendly check-in
+    if any(p in clean_lower for p in ['how are you', 'how r u', 'how are you doing', 'hows it going', 'whats up', 'how do you do']):
+        return {
+            "success": True,
+            "message": "I'm doing fantastic, thanks for asking! 😊 Always excited to help you scout great locations and explore business feasibility. How are you doing today?",
+            "structured_actions": [
+                {"intent": "view_heatmap", "label": "🔥 View Heatmap"},
+                {"intent": "open_dashboard", "label": "📈 Open Dashboard"},
+            ]
+        }
 
-Try asking: *"What business should I open in Indiranagar?"* or *"Analyze cafe in Koramangala"*!""",
+    # 1d. Friends / Companionship
+    if any(p in clean_lower for p in ['can we be friends', 'be my friend', 'are we friends', 'lets be friends']):
+        return {
+            "success": True,
+            "message": "Of course we can! 🤝 I'd love to be your friend and business brainstorming buddy. Tell me, what kind of venture or ideas are you passionate about?",
+            "structured_actions": []
+        }
+
+    # 1e. Jokes & Humor
+    if any(p in clean_lower for p in ['tell me a joke', 'joke', 'make me laugh', 'say something funny']):
+        return {
+            "success": True,
+            "message": "Why did the coffee shop open next to the gym? Because they knew the customers loved an extra shot of energy! ☕💪 What kind of business would you love to start?",
+            "structured_actions": []
+        }
+
+    # 1f. Gratitude
+    if any(p in clean_lower for p in ['thank you', 'thanks', 'thx', 'thank u', 'appreciate it']):
+        return {
+            "success": True,
+            "message": "You're very welcome! Always happy to help a friend. 😊 Let me know anytime you want to check another spot or view the heatmap!",
+            "structured_actions": []
+        }
+
+    # 1g. Affirmations
+    if lower in ['cool', 'awesome', 'nice', 'great', 'good', 'super', 'amazing', 'ok', 'okay', 'got it']:
+        return {
+            "success": True,
+            "message": "Awesome! 👍 Whenever you're ready, ask me about any area, or let me know if you want to jump to the map, analytics, or reports!",
+            "structured_actions": [
+                {"intent": "view_heatmap", "label": "🔥 View Heatmap"},
+                {"intent": "open_dashboard", "label": "📈 Open Dashboard"},
+            ]
+        }
+
+    # 1h. General capabilities / Help
+    if lower in ['help', 'what can you do', 'commands', 'what do you do']:
+        return {
+            "success": True,
+            "message": """I'm your **AI Assistant** and business partner! 🚀 Here is what we can do together:
+• **Chat & brainstorm**: Ask me questions like a friend about business ideas and locations
+• **Check Feasibility**: Ask *"Is a cafe feasible in Koramangala?"*
+• **Analyze Footfall**: Ask *"Show crowd density in Indiranagar"*
+• **Navigate Anywhere**: Say *"Take me to map"*, *"Show analytics"*, or *"Where are my reports?"*
+
+What are you thinking of launching?""",
+            "structured_actions": [
+                {"intent": "view_heatmap", "label": "🔥 View Heatmap"},
+                {"intent": "open_dashboard", "label": "📈 Open Dashboard"},
+            ]
+        }
+
+    # Step 2: Validate Query Relevance (Strict Domain Scope for specialized queries)
+    if not is_platform_relevant(sanitized_query):
+        return {
+            "success": True,
+            "message": OUT_OF_SCOPE_RESPONSE,
             "structured_actions": [
                 {"intent": "view_heatmap", "label": "🔥 View Heatmap"},
                 {"intent": "open_dashboard", "label": "📈 Open Dashboard"},
