@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "https://buz-intelligence.onrender.com/$1"
+      "destination": "https://buz-intelligence-backend-4rlo.onrender.com/$1"
     }
   ]
 }
