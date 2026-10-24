@@ -2,6 +2,7 @@
   "version": 2,
   "buildCommand": "echo 'Build skipped'",
   "installCommand": "echo 'Install skipped'",
+  "outputDirectory": ".",
   "framework": null,
   "rewrites": [
     {
