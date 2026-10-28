@@ -21,7 +21,7 @@ class RequestValidationTests(SimpleTestCase):
         self.assertEqual(ctx.exception.code, 'no_location')
 
     def test_invalid_radius(self):
-        for radius in (5000, 'abc', -1):
+        for radius in (9999, 'abc', -1):
             with self.assertRaises(v.ValidationError) as ctx:
                 v.validate_report_request(request_body(radius_m=radius))
             self.assertEqual(ctx.exception.code, 'invalid_radius')

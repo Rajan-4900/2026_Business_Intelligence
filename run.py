@@ -12,6 +12,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Fix Windows console unicode encoding issues
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 BASE_DIR = Path(__file__).resolve().parent
 
 # ANSI Colors for terminal output
@@ -32,7 +40,7 @@ def print_banner():
 ======================================================================
    CROWD HEATMAP & BUSINESS INTELLIGENCE PLATFORM (BI)
 ======================================================================{Colors.RESET}
-  {Colors.DIM}• Django 6.0+ | Daphne ASGI | WebSockets | Scikit-Learn | Leaflet{Colors.RESET}
+  {Colors.DIM}* Django 6.0+ | Daphne ASGI | WebSockets | Scikit-Learn | Leaflet{Colors.RESET}
 """
     print(banner)
 
@@ -212,11 +220,11 @@ def cmd_dev(args):
     dashboard_url = f"http://{host}:{port}/dashboard/"
 
     print(f"""{Colors.BOLD}Ready to serve Frontend & Backend:{Colors.RESET}
-  {Colors.GREEN}➜{Colors.RESET}  {Colors.BOLD}Frontend Home:{Colors.RESET}     {Colors.CYAN}{url}{Colors.RESET}
-  {Colors.GREEN}➜{Colors.RESET}  {Colors.BOLD}BI Dashboard:{Colors.RESET}      {Colors.CYAN}{dashboard_url}{Colors.RESET}
-  {Colors.GREEN}➜{Colors.RESET}  {Colors.BOLD}Admin Panel:{Colors.RESET}       {Colors.CYAN}{admin_url}{Colors.RESET}
-  {Colors.GREEN}➜{Colors.RESET}  {Colors.BOLD}WebSocket Engine:{Colors.RESET}  {Colors.DIM}ws://{host}:{port}/ws/chat/{Colors.RESET}
-  {Colors.GREEN}➜{Colors.RESET}  {Colors.BOLD}Server Core:{Colors.RESET}       {Colors.DIM}Daphne ASGI (HTTP + WS){Colors.RESET}
+  {Colors.GREEN}->{Colors.RESET}  {Colors.BOLD}Frontend Home:{Colors.RESET}     {Colors.CYAN}{url}{Colors.RESET}
+  {Colors.GREEN}->{Colors.RESET}  {Colors.BOLD}BI Dashboard:{Colors.RESET}      {Colors.CYAN}{dashboard_url}{Colors.RESET}
+  {Colors.GREEN}->{Colors.RESET}  {Colors.BOLD}Admin Panel:{Colors.RESET}       {Colors.CYAN}{admin_url}{Colors.RESET}
+  {Colors.GREEN}->{Colors.RESET}  {Colors.BOLD}WebSocket Engine:{Colors.RESET}  {Colors.DIM}ws://{host}:{port}/ws/chat/{Colors.RESET}
+  {Colors.GREEN}->{Colors.RESET}  {Colors.BOLD}Server Core:{Colors.RESET}       {Colors.DIM}Daphne ASGI (HTTP + WS){Colors.RESET}
 
 {Colors.DIM}Press CTRL+C to stop the server.{Colors.RESET}
 ----------------------------------------------------------------------

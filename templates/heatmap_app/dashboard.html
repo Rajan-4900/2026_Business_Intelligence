@@ -585,193 +585,35 @@
 
             <!-- Business Recommendations Section -->
             <div class="business-recommendations-section d-none">
-                <div class="recommendations-header">
-                    <h3 class="recommendations-title">
-                        <i class="fas fa-lightbulb"></i>
-                        Top 5 Business Recommendations
-                    </h3>
-                    <div class="recommendations-subtitle">Based on location analysis and market trends</div>
+                <div class="recommendations-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                    <div>
+                        <h3 class="recommendations-title mb-1">
+                            <i class="fas fa-lightbulb text-warning"></i>
+                            Top 5 Business Recommendations
+                        </h3>
+                        <div class="recommendations-subtitle text-muted small" id="recommendations-subtitle">Location-specific commercial opportunities within 5 km trading zone</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="dashboard-rec-location-select" class="text-muted small text-nowrap"><i class="fas fa-map-marker-alt text-primary me-1"></i>Location:</label>
+                        <select id="dashboard-rec-location-select" class="form-select form-select-sm bg-dark text-light border-secondary" style="min-width: 230px;">
+                            <option value="">Select Area...</option>
+                            <option value="12.9716,77.5946,MG Road, Bengaluru">MG Road, Bengaluru</option>
+                            <option value="12.9352,77.6245,Koramangala, Bengaluru">Koramangala, Bengaluru</option>
+                            <option value="12.9784,77.6408,Indiranagar, Bengaluru">Indiranagar, Bengaluru</option>
+                            <option value="12.9279,77.6271,HSR Layout, Bengaluru">HSR Layout, Bengaluru</option>
+                            <option value="12.9866,77.7376,Whitefield, Bengaluru">Whitefield, Bengaluru</option>
+                            <option value="12.9250,77.5938,Jayanagar, Bengaluru">Jayanagar, Bengaluru</option>
+                        </select>
+                        <button type="button" id="btn-dashboard-refresh-recs" class="btn btn-sm btn-outline-primary" title="Refresh Recommendations">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="business-flashcards-container">
-                    <!-- Business 1: Urban Cafe Flashcard -->
-                    <div class="business-flashcard">
-                        <div class="flashcard-header">
-                            <div class="flashcard-icon">
-                                <i class="fas fa-coffee"></i>
-                            </div>
-                            <div class="flashcard-title">
-                                <h4>Urban Cafe</h4>
-                                <div class="flashcard-revenue">
-                                    <span class="revenue-label">Starting Revenue</span>
-                                    <span class="revenue-amount">₹45,000/month</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flashcard-content">
-                            <div class="flashcard-facts">
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>High foot traffic area</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Low startup costs</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Morning & evening peak hours</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-star"></i>
-                                    <span>Premium location available</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Business 2: Fitness Center Flashcard -->
-                    <div class="business-flashcard">
-                        <div class="flashcard-header">
-                            <div class="flashcard-icon">
-                                <i class="fas fa-dumbbell"></i>
-                            </div>
-                            <div class="flashcard-title">
-                                <h4>Fitness Center</h4>
-                                <div class="flashcard-revenue">
-                                    <span class="revenue-label">Starting Revenue</span>
-                                    <span class="revenue-amount">₹62,000/month</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flashcard-content">
-                            <div class="flashcard-facts">
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Health-conscious demographic</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Multiple revenue streams</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Low competition nearby</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-star"></i>
-                                    <span>High growth potential</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Business 3: Co-working Space Flashcard -->
-                    <div class="business-flashcard">
-                        <div class="flashcard-header">
-                            <div class="flashcard-icon">
-                                <i class="fas fa-briefcase"></i>
-                            </div>
-                            <div class="flashcard-title">
-                                <h4>Co-working Space</h4>
-                                <div class="flashcard-revenue">
-                                    <span class="revenue-label">Starting Revenue</span>
-                                    <span class="revenue-amount">₹38,000/month</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flashcard-content">
-                            <div class="flashcard-facts">
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Remote work trend</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Flexible pricing model</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Corporate partnerships</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-star"></i>
-                                    <span>Prime location</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Business 4: Organic Restaurant Flashcard -->
-                    <div class="business-flashcard">
-                        <div class="flashcard-header">
-                            <div class="flashcard-icon">
-                                <i class="fas fa-utensils"></i>
-                            </div>
-                            <div class="flashcard-title">
-                                <h4>Organic Restaurant</h4>
-                                <div class="flashcard-revenue">
-                                    <span class="revenue-label">Starting Revenue</span>
-                                    <span class="revenue-amount">₹55,000/month</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flashcard-content">
-                            <div class="flashcard-facts">
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Health-conscious market</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Local supplier network</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Lunch & dinner peaks</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-star"></i>
-                                    <span>High profit margins</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Business 5: Tech Repair Store Flashcard -->
-                    <div class="business-flashcard">
-                        <div class="flashcard-header">
-                            <div class="flashcard-icon">
-                                <i class="fas fa-tools"></i>
-                            </div>
-                            <div class="flashcard-title">
-                                <h4>Tech Repair Store</h4>
-                                <div class="flashcard-revenue">
-                                    <span class="revenue-label">Starting Revenue</span>
-                                    <span class="revenue-amount">₹42,000/month</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flashcard-content">
-                            <div class="flashcard-facts">
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>High demand area</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Multiple service lines</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Low inventory costs</span>
-                                </div>
-                                <div class="fact-item">
-                                    <i class="fas fa-star"></i>
-                                    <span>Commercial zone benefits</span>
-                                </div>
-                            </div>
-                        </div>
+                <div class="business-flashcards-container row g-3" id="dashboard-recommendations-cards-container">
+                    <div class="text-center text-muted p-5 col-12" id="dashboard-recs-placeholder">
+                        <div class="spinner-border text-primary mb-3" role="status"></div>
+                        <p>Select an area or use the map to generate location-specific recommendations within 5 km.</p>
                     </div>
                 </div>
             </div>

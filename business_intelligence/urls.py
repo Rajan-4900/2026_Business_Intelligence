@@ -12,5 +12,6 @@ urlpatterns = [
     path('api/generate-best-locations/', views.generate_best_locations, name='generate_best_locations'),
     path('api/business-types/', views.get_business_types, name='get_business_types'),
     path('api/find-matching-locations/', views.find_matching_locations, name='find_matching_locations'),
+    path('api/location-recommendations/', views.get_location_recommendations, name='get_location_recommendations'),
     path('api/log-activity/', views.log_activity_api, name='log_activity_api'),
 ]

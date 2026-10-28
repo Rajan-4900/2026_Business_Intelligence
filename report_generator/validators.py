@@ -17,7 +17,7 @@ from PIL import Image, UnidentifiedImageError
 
 from business_intelligence.analysis import HEATMAP_RADIUS_M
 
-SUPPORTED_RADII_M = (HEATMAP_RADIUS_M,)
+SUPPORTED_RADII_M = (2000, 5000, HEATMAP_RADIUS_M)
 # How far (metres) the analysed heatmap centre may be from the requested
 # location before we refuse to pair that screenshot with this report.
 MAX_CAPTURE_OFFSET_M = 30.0

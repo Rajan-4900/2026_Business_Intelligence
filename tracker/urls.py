@@ -10,4 +10,5 @@ urlpatterns = [
     path('autocomplete-location/', views.autocomplete_location, name='autocomplete_location'),
     path('contact/', views.contact_us, name='contact_us'),
     path('api/user-location/', views.report_user_location, name='report_user_location'),
+    path('api/location-recommendations/', views.get_location_recommendations, name='tracker_location_recommendations'),
 ]

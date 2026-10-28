@@ -391,51 +391,24 @@ def autocomplete_location(request):
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
 @csrf_exempt
-@require_http_methods(['POST'])
 def find_popular_places(request):
-    """Find popular places within 5km radius using Overpass API."""
-    try:
-        data = json.loads(request.body or '{}')
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    """Find popular places within an exact 5km radius using optimized Overpass spatial query.
+    Delegates to business_intelligence for shared caching, accurate 5km boundary, and unified data.
+    """
+    from business_intelligence.views import find_popular_places as shared_view
+    return shared_view(request)
 
-    lat = data.get('latitude')
-    lon = data.get('longitude')
-    if lat is None or lon is None:
-        return JsonResponse({
-            'success': False,
-            'error': 'Latitude and longitude are required'
-        }, status=400)
-    try:
-        lat = float(lat)
-        lon = float(lon)
-    except (TypeError, ValueError):
-        return JsonResponse({'success': False, 'error': 'Invalid coordinates'}, status=400)
-    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-        return JsonResponse({'success': False, 'error': 'Coordinates out of range'}, status=400)
 
-    # Overpass query: optimized for 20 spatial tags within 2km
-    query = _build_overpass_query(lat, lon, 2000)
-    results, error = _run_overpass_query(query, timeout=30)
-    if error or results is None:
-        return JsonResponse({
-            'success': False,
-            'error': error or 'Unable to fetch popular places. Please try again.'
-        })
-    elements = results.get('elements', [])
-    
-    # --- PER-PLACE REVENUE CALCULATION ---
-    enriched_places, total_area_revenue = utils.enrich_places_with_revenue(elements)
-    
-    return JsonResponse({
-        'success': True, 
-        'results': enriched_places,
-        'total_area_revenue': total_area_revenue
-    })
+@csrf_exempt
+def get_location_recommendations(request):
+    """Delegates to business_intelligence for dynamic 5km location recommendations."""
+    from business_intelligence.views import get_location_recommendations as shared_view
+    return shared_view(request)
+
 
 @csrf_exempt
 def analyze_crowd_intensity(request):
-    """Analyze crowd intensity in a 2km radius and return high/medium/low areas.
+    """Analyze crowd intensity in a 5km radius and return high/medium/low areas.
 
     Delegates to business_intelligence so the heatmap and the PDF report
     (report_generator) classify sectors with one shared implementation.

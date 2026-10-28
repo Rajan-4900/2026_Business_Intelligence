@@ -99,9 +99,21 @@ function initHeatmapContainer() {
             map.removeLayer(userMarker);
         }
         userMarker = L.marker([lat, lon]).addTo(map)
-            .bindPopup('Selected Location').openPopup();
+            .bindPopup('<b>Selected Location</b><br><small class="text-primary"><i class="fas fa-radar"></i> 5 km Analysis Zone Active</small>').openPopup();
+
+        if (analysisRadiusCircle) {
+            try { map.removeLayer(analysisRadiusCircle); } catch (_e) {}
+        }
+        analysisRadiusCircle = L.circle([lat, lon], {
+            radius: 5000,
+            color: '#2563eb',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.12,
+            weight: 2,
+            dashArray: '6, 6'
+        }).addTo(map).bindTooltip('5 km Analysis Zone', { permanent: false, direction: 'top' });
+
         saveSelectedLocation(lat, lon, 'Map Selection', '');
-        if (redirectToDashboardAIIfNeeded()) return;
 
         // Update accuracy (clicking on map has high accuracy)
         updateAccuracyMeter(95);
@@ -222,9 +234,8 @@ function isBusinessRecommendationsMode() {
 }
 
 function redirectToDashboardAIIfNeeded() {
-    if (isDashboardPage()) return false;
-    window.location.href = '/dashboard/?ai=true';
-    return true;
+    // Preserve current page view so home map and dashboard map interactions are never hijacked
+    return false;
 }
 
 function getSelectedLocation() {
@@ -588,10 +599,27 @@ async function findMyLocation(btnId = 'find-location-btn') {
         }
         geoLog('Location obtained:', { lat, lon, accuracy, approximate });
         showLocationError('');
-        if (userMarker) map.removeLayer(userMarker);
-        userMarker = L.marker([lat, lon]).addTo(map)
-            .bindPopup(approximate ? 'Your approximate location (from IP)' : 'Your Location').openPopup();
-        map.setView([lat, lon], 15);
+        const activeMap = (typeof dashboardMap !== 'undefined' && dashboardMap) ? dashboardMap : (typeof map !== 'undefined' ? map : null);
+        if (activeMap) {
+            if (userMarker) {
+                try { activeMap.removeLayer(userMarker); } catch (_e) {}
+            }
+            userMarker = L.marker([lat, lon]).addTo(activeMap)
+                .bindPopup(approximate ? 'Your approximate location (from IP)' : 'Your Location').openPopup();
+            activeMap.setView([lat, lon], 14);
+
+            if (analysisRadiusCircle) {
+                try { activeMap.removeLayer(analysisRadiusCircle); } catch (_e) {}
+            }
+            analysisRadiusCircle = L.circle([lat, lon], {
+                radius: 5000,
+                color: '#2563eb',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.12,
+                weight: 2,
+                dashArray: '6, 6'
+            }).addTo(activeMap).bindTooltip('5 km Radius Zone', { permanent: false, direction: 'top' });
+        }
         updateAccuracyMeter(accuracy != null ? accuracy : (approximate ? 30 : 95));
 
         const latField = document.getElementById('id_latitude');
@@ -660,7 +688,11 @@ async function findMyLocation(btnId = 'find-location-btn') {
 
 // Global button click
 safeOn('find-location-btn', 'click', async function () {
-    await findMyLocation();
+    const geoRes = await findMyLocation('find-location-btn');
+    if (geoRes && geoRes.success && typeof geoRes.lat === 'number') {
+        await findPopularPlaces(geoRes.lat, geoRes.lon, false);
+        await updateCrowdIntensityDropdown(geoRes.lat, geoRes.lon);
+    }
 });
 
 // --- ANIMATION UTILS ---
@@ -1201,53 +1233,111 @@ function setDashboardAIEmptyState(message) {
     }
 }
 
-async function loadRecommendationCardsForLocation(lat, lon) {
-    if (!isBusinessRecommendationsMode()) return;
+async function loadRecommendationCardsForLocation(lat, lon, locName = 'Selected Location') {
     const row = document.getElementById('business-recommendations-row');
-    if (!row) return;
+    const dashContainer = document.getElementById('dashboard-recommendations-cards-container');
+
+    if (row) {
+        row.innerHTML = `<div class="text-center text-muted p-5 col-12"><div class="spinner-border text-primary mb-3" role="status"></div><p>Analyzing 5 km trading zone for <strong>${locName}</strong>...</p></div>`;
+    }
+    if (dashContainer) {
+        dashContainer.innerHTML = `<div class="text-center text-muted p-5 col-12"><div class="spinner-border text-primary mb-3" role="status"></div><p>Analyzing 5 km trading zone for <strong>${locName}</strong>...</p></div>`;
+    }
 
     try {
-        const response = await fetch('/find-popular-places/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ latitude: lat, longitude: lon })
-        });
+        const response = await fetch(`/api/location-recommendations/?latitude=${lat}&longitude=${lon}&location_name=${encodeURIComponent(locName)}&radius=5000`);
         const data = await response.json();
         if (!response.ok || !data.success) {
-            throw new Error(data.error || data.message || 'Unable to fetch nearby places');
+            throw new Error(data.error || data.message || 'Unable to fetch recommendations');
         }
 
-        const places = Array.isArray(data.results) ? data.results : [];
-        if (!places.length) {
-            row.innerHTML = `
-                <div class="text-center text-muted p-5">
+        const recs = Array.isArray(data.recommendations) ? data.recommendations : [];
+        if (!recs.length) {
+            const emptyMsg = `
+                <div class="text-center text-muted p-5 col-12">
                     <i class="fas fa-map-pin fa-3x mb-3 opacity-50"></i>
-                    <p>No recommendation data found for this location yet.</p>
+                    <p>No recommendation opportunities found for ${locName} within 5 km.</p>
                 </div>
             `;
+            if (row) row.innerHTML = emptyMsg;
+            if (dashContainer) dashContainer.innerHTML = emptyMsg;
             return;
         }
 
-        renderBusinessRecommendationCards(places, lat, lon);
+        renderBusinessRecommendationCards(recs, lat, lon);
     } catch (err) {
         console.error('Recommendation cards load failed:', err);
-        row.innerHTML = `
-            <div class="text-center text-muted p-5">
+        const errMsg = `
+            <div class="text-center text-muted p-5 col-12">
                 <i class="fas fa-triangle-exclamation fa-3x mb-3 opacity-50"></i>
                 <p>Could not load recommendations: ${err.message}</p>
             </div>
         `;
+        if (row) row.innerHTML = errMsg;
+        if (dashContainer) dashContainer.innerHTML = errMsg;
+    }
+}
+
+function initDashboardRecsDropdown() {
+    const dropdown = document.getElementById('dashboard-rec-location-select');
+    const refreshBtn = document.getElementById('btn-dashboard-refresh-recs');
+    if (!dropdown || dropdown._initialized) return;
+    dropdown._initialized = true;
+
+    let stored = getSelectedLocation();
+    if (stored && stored.lat && stored.lng) {
+        const val = `${stored.lat},${stored.lng},${stored.name || 'Selected Location'}`;
+        let exists = false;
+        for (let i = 0; i < dropdown.options.length; i++) {
+            if (dropdown.options[i].value === val) {
+                exists = true;
+                dropdown.selectedIndex = i;
+                break;
+            }
+        }
+        if (!exists) {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = `📍 ${stored.name || 'Searched Location'}`;
+            dropdown.insertBefore(opt, dropdown.options[1]);
+            dropdown.selectedIndex = 1;
+        }
+    } else {
+        dropdown.selectedIndex = 1;
+    }
+
+    const onLocationChange = async () => {
+        const selectedVal = dropdown.value;
+        if (!selectedVal) return;
+        const parts = selectedVal.split(',');
+        if (parts.length >= 2) {
+            const lat = parseFloat(parts[0]);
+            const lon = parseFloat(parts[1]);
+            const name = parts.slice(2).join(',') || 'Selected Area';
+            saveSelectedLocation(lat, lon, name, '');
+            const subtitle = document.getElementById('recommendations-subtitle');
+            if (subtitle) {
+                subtitle.textContent = `Location-specific commercial opportunities within 5 km trading zone for ${name}`;
+            }
+            await loadRecommendationCardsForLocation(lat, lon, name);
+            if (typeof analyzeLocationIntelligence === 'function') {
+                analyzeLocationIntelligence(lat, lon, name);
+            }
+        }
+    };
+
+    dropdown.addEventListener('change', onLocationChange);
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', onLocationChange);
     }
 }
 
 async function initDashboardAIFromStorage() {
     if (!isDashboardPage()) return;
+    initDashboardRecsDropdown();
     const query = new URLSearchParams(window.location.search);
     const forceAI = query.get('ai') === 'true';
-    const stored = getSelectedLocation();
+    let stored = getSelectedLocation();
     const launchpad = document.getElementById('dashboard-launchpad');
     const dynamicMapContainer = document.getElementById('dynamic-map-container');
     const analyticsSection = document.getElementById('dashboard-analytics-section');
@@ -1263,17 +1353,6 @@ async function initDashboardAIFromStorage() {
         return;
     }
 
-    if (!stored) {
-        if (launchpad) launchpad.classList.add('d-none');
-        if (dynamicMapContainer) dynamicMapContainer.classList.add('d-none');
-        if (analyticsSection) analyticsSection.classList.remove('d-none');
-        if (aiPanel) aiPanel.classList.remove('d-none');
-        const aiTab = document.getElementById('dash-ai-tab');
-        if (aiTab) aiTab.click();
-        setDashboardAIEmptyState('No analyzed location yet. Use Map to select and analyze a location first.');
-        return;
-    }
-
     if (analyticsSection) analyticsSection.classList.remove('d-none');
     if (aiPanel) aiPanel.classList.remove('d-none');
     if (launchpad) launchpad.classList.add('d-none');
@@ -1281,12 +1360,18 @@ async function initDashboardAIFromStorage() {
     const aiTab = document.getElementById('dash-ai-tab');
     if (aiTab) aiTab.click();
 
+    if (!stored || !stored.lat || !stored.lng) {
+        stored = { lat: 12.9716, lng: 77.5946, name: 'MG Road, Bengaluru' };
+        saveSelectedLocation(stored.lat, stored.lng, stored.name, '');
+    }
+
     await analyzeLocationIntelligence(stored.lat, stored.lng, stored.name || 'Selected Location');
-    await loadRecommendationCardsForLocation(stored.lat, stored.lng);
+    await loadRecommendationCardsForLocation(stored.lat, stored.lng, stored.name || 'Selected Location');
 }
 
 async function openDashboardDataOnlyMode(targetTab) {
     if (!isDashboardPage()) return;
+    initDashboardRecsDropdown();
 
     const params = new URLSearchParams(window.location.search);
     params.set('ai', 'true');
@@ -1325,18 +1410,43 @@ async function openDashboardDataOnlyMode(targetTab) {
         window.dispatchEvent(new Event('resize'));
     }, 150);
 
-    const stored = getSelectedLocation();
-    if (!stored) {
-        setDashboardAIEmptyState('No analyzed location yet. Use Map to select and analyze a location first.');
-        return;
+    let stored = getSelectedLocation();
+    if (!stored || !stored.lat || !stored.lng) {
+        stored = { lat: 12.9716, lng: 77.5946, name: 'MG Road, Bengaluru' };
+        saveSelectedLocation(stored.lat, stored.lng, stored.name, '');
     }
 
     await analyzeLocationIntelligence(stored.lat, stored.lng, stored.name || 'Selected Location');
-    await loadRecommendationCardsForLocation(stored.lat, stored.lng);
+    await loadRecommendationCardsForLocation(stored.lat, stored.lng, stored.name || 'Selected Location');
 }
 
 // Function to find popular places (reusable)
+let _isPopularPlacesScanning = false;
 async function findPopularPlaces(lat, lon, showAlert = true) {
+    if (_isPopularPlacesScanning) {
+        if (showAlert) showHeatmapToast('Analysis already in progress, please wait...', 'info');
+        return { success: false, in_progress: true };
+    }
+    _isPopularPlacesScanning = true;
+
+    // Loading states for trigger buttons
+    const triggerButtons = [
+        document.getElementById('popular-places-btn'),
+        document.getElementById('dashboard-popular-places-btn')
+    ].filter(Boolean);
+
+    triggerButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Scanning 5 km...';
+    });
+
+    const statusEl = document.getElementById('map-status');
+    if (statusEl) statusEl.textContent = 'Scanning 5 km trading zone...';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     try {
         const response = await fetch('/find-popular-places/', {
             method: 'POST',
@@ -1344,8 +1454,11 @@ async function findPopularPlaces(lat, lon, showAlert = true) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({ latitude: lat, longitude: lon })
+            body: JSON.stringify({ latitude: lat, longitude: lon }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         let data;
         try {
@@ -1360,27 +1473,29 @@ async function findPopularPlaces(lat, lon, showAlert = true) {
         }
 
         if (data.success) {
+            const activeMap = (typeof dashboardMap !== 'undefined' && dashboardMap) ? dashboardMap : (typeof map !== 'undefined' ? map : null);
+
             // Clear previous popular places markers if map is initialized
-            if (typeof map !== 'undefined' && map) {
+            if (activeMap) {
                 if (Array.isArray(popularPlacesMarkers)) {
                     popularPlacesMarkers.forEach(marker => {
-                        try { map.removeLayer(marker); } catch (e) {}
+                        try { activeMap.removeLayer(marker); } catch (e) {}
                     });
                 }
                 popularPlacesMarkers = [];
 
                 // Clear previous radius circle if exists
                 if (radiusCircle) {
-                    try { map.removeLayer(radiusCircle); } catch (e) {}
+                    try { activeMap.removeLayer(radiusCircle); } catch (e) {}
                     radiusCircle = null;
                 }
             }
 
-            // Add markers for popular places (limit to 15)
+            // Add markers for popular places only when explicitly requested (keeps Live Crowd Heatmap clean)
             const POPULAR_PLACES_MARKER_LIMIT = 15;
             const placesToShow = (data.results || []).slice(0, POPULAR_PLACES_MARKER_LIMIT);
 
-            if (typeof map !== 'undefined' && map && typeof L !== 'undefined') {
+            if (popularPlacesPanelRequested && activeMap && typeof L !== 'undefined') {
                 placesToShow.forEach(place => {
                     let placeLat, placeLon;
                     if (place.lat && place.lon) {
@@ -1454,15 +1569,12 @@ async function findPopularPlaces(lat, lon, showAlert = true) {
                                 popupAnchor: [1, -34],
                                 shadowSize: [41, 41]
                             })
-                        }).addTo(map)
+                        }).addTo(activeMap)
                             .bindPopup(popupContent, { minWidth: 260, className: 'premium-popup' });
 
                         marker.on('click', () => {
                             if (typeof saveSelectedLocation === 'function') {
                                 saveSelectedLocation(placeLat, placeLon, name, amenity || '');
-                            }
-                            if (typeof redirectToDashboardAIIfNeeded === 'function') {
-                                redirectToDashboardAIIfNeeded();
                             }
                         });
 
@@ -1473,69 +1585,83 @@ async function findPopularPlaces(lat, lon, showAlert = true) {
                 });
 
                 if (radiusCircle) {
-                    try { map.removeLayer(radiusCircle); } catch (e) {}
+                    try { activeMap.removeLayer(radiusCircle); } catch (e) {}
                 }
                 try {
                     radiusCircle = L.circle([lat, lon], {
-                        radius: 2000, color: '#2e7d32', fillColor: '#388e3c', fillOpacity: 0.12, weight: 2, dashArray: '10, 10'
-                    }).addTo(map);
+                        radius: 5000, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.08, weight: 2, dashArray: '8, 8'
+                    }).addTo(activeMap);
+                    radiusCircle.bindTooltip('Analysis radius: 5 km', { permanent: false, direction: 'top' });
                 } catch (e) {
                     console.warn('Radius circle error:', e);
                 }
             }
 
-            // Update Total Area Revenue in Footer with Animation
-            if (data.total_area_revenue) {
-                const revenueDisplay = document.getElementById('revenue-prediction-display');
-                const revenueVal = document.getElementById('revenue-value');
-                const scoreVal = document.getElementById('crowd-score-value');
+            // Update Total Area Revenue & Active Sensors in Footer
+            const revenueDisplay = document.getElementById('revenue-prediction-display');
+            const revenueVal = document.getElementById('revenue-value');
+            const scoreVal = document.getElementById('crowd-score-value');
 
-                if (revenueDisplay && revenueVal) {
-                    revenueDisplay.classList.remove('d-none');
-                    if (typeof animateValue === 'function') {
-                        animateValue(revenueVal, 0, data.total_area_revenue, 1500);
-                    } else {
-                        revenueVal.textContent = '₹' + data.total_area_revenue;
-                    }
+            if (revenueDisplay) {
+                revenueDisplay.classList.remove('d-none');
+                const totalRev = data.total_area_revenue || (data.crowd_intensity && data.crowd_intensity.estimated_revenue) || 0;
+                if (revenueVal) {
+                    revenueVal.textContent = '₹' + Number(totalRev).toLocaleString('en-IN');
+                }
+                const revLabel = revenueDisplay.querySelector('.revenue-label');
+                if (revLabel) {
+                    revLabel.textContent = 'Est. Monthly Revenue';
+                    revLabel.classList.add('pulse-text');
+                }
 
-                    const revLabel = revenueDisplay.querySelector('.revenue-label');
-                    if (revLabel) revLabel.textContent = 'Total Area Potential';
-                    if (revLabel) revLabel.classList.add('pulse-text');
-
-                    if (scoreVal) scoreVal.textContent = data.results.length + ' Monitor Points';
+                if (scoreVal) {
+                    const sensorCount = data.active_sensors_count || (data.results ? data.results.length : 0);
+                    scoreVal.textContent = String(sensorCount);
                     const scoreLabel = scoreVal.parentElement?.querySelector('.revenue-label');
                     if (scoreLabel) scoreLabel.textContent = 'Active Sensors';
+                    if (sensorCount >= 20) scoreVal.style.color = '#4ade80';
                 }
             }
 
-            lastPopularPlacesResult = { places: data.results || [], lat, lon };
+            lastPopularPlacesResult = { places: data.results || [], lat, lon, recommendations: data.recommendations || [] };
             if (typeof renderPopularPlacesFlashcards === 'function') {
                 renderPopularPlacesFlashcards(data.results || []);
             }
             if (typeof renderBusinessRecommendationCards === 'function') {
-                renderBusinessRecommendationCards(data.results || [], lat, lon);
+                const recsToRender = (data.recommendations && data.recommendations.length) ? data.recommendations : (data.results || []);
+                renderBusinessRecommendationCards(recsToRender, lat, lon);
             }
 
+            // Pre-pass crowd intensity to avoid redundant 2nd HTTP round-trip to /analyze-crowd-intensity/
             if (typeof updateCrowdIntensityDropdown === 'function') {
-                await updateCrowdIntensityDropdown(lat, lon);
+                await updateCrowdIntensityDropdown(lat, lon, data.crowd_intensity);
             }
+
+            if (statusEl) statusEl.textContent = `Analysis Ready (${data.is_live ? 'Verified live OSM' : 'Signal-based estimate'}, 5 km radius)`;
 
             if (showAlert) {
-                showHeatmapToast(`AI Scan Complete: ${data.results.length} monitored zones active.`, 'success');
+                showHeatmapToast(`5 km Scan Complete: ${data.active_sensors_count || data.results.length} monitored sensors active.`, 'success');
             }
-            notifyChatFromMap(`Simulation Active: ${data.results.length} zones monitored. Revenue engine online.`);
             return { success: true, count: data.results.length };
         } else {
             const errMsg = data.error || data.message || 'Unable to fetch popular places.';
             if (showAlert) showHeatmapToast('Scan Failed: ' + errMsg, 'error');
-            notifyChatFromMap('Scan failed: ' + errMsg);
             return { success: false, error: errMsg };
         }
     } catch (error) {
         console.error('Error:', error);
-        const errMsg = (error.message || 'Network or server error. Please try again.').replace(/^Error:\s*/i, '');
+        const errMsg = error.name === 'AbortError' ? 'Scan timed out after 25s. Server was slow.' : (error.message || 'Network or server error. Please try again.').replace(/^Error:\s*/i, '');
         if (showAlert) showHeatmapToast('System Error: ' + errMsg, 'error');
         return { success: false, error: errMsg };
+    } finally {
+        clearTimeout(timeoutId);
+        _isPopularPlacesScanning = false;
+        triggerButtons.forEach(btn => {
+            btn.disabled = false;
+            if (btn.dataset.originalHtml) {
+                btn.innerHTML = btn.dataset.originalHtml;
+            }
+        });
     }
 }
 
@@ -1913,43 +2039,135 @@ function renderPopularPlacesTable(places, lat, lon) {
 /**
  * Render dynamic "Top Business Recommendations" cards based on popular places.
  */
+function createOpportunityCard(rec, lat, lon) {
+    const rank = rec.rank || 1;
+    const name = rec.name || 'Business Opportunity';
+    const locality = rec.locality || 'Selected Area';
+    const category = rec.category || 'retail';
+    const badge = rec.badge || 'High Growth Opportunity';
+    const icon = rec.icon || 'fas fa-store';
+    const targetLat = rec.target_lat || lat;
+    const targetLon = rec.target_lon || lon;
+    const rev = rec.starting_monthly_revenue ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(rec.starting_monthly_revenue) : '₹50,000';
+    const costs = rec.estimated_monthly_costs ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(rec.estimated_monthly_costs) : '₹28,000';
+    const profit = rec.estimated_monthly_profit ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(rec.estimated_monthly_profit) : '₹22,000';
+    const demand = rec.expected_demand || 'High';
+    const competition = rec.competition_level || 'Moderate';
+    const demandBadgeClass = demand.includes('Very') ? 'bg-success' : (demand === 'High' ? 'bg-primary' : 'bg-info');
+    const compBadgeClass = competition === 'Low' ? 'bg-success' : (competition === 'Moderate' ? 'bg-warning text-dark' : 'bg-danger');
+
+    const reasonsList = (rec.reasons || []).slice(0, 3).map(r => `<li class="small mb-1 text-light"><i class="fas fa-check text-success me-2"></i>${r}</li>`).join('');
+    const escapedName = String(name).replace(/'/g, "\\'");
+
+    return `
+        <div class="col-12 col-md-6 col-xl-4 mb-3">
+            <div class="business-opportunity-card card bg-dark text-light border-secondary h-100 shadow-sm" style="border-radius: 12px; overflow: hidden; background: linear-gradient(145deg, #182234 0%, #0f172a 100%);">
+                <div class="card-header border-secondary d-flex justify-content-between align-items-center py-2 px-3" style="background: rgba(255,255,255,0.03);">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary rounded-pill">#${rank}</span>
+                        <i class="${icon} text-warning fs-5"></i>
+                        <strong class="text-truncate" style="max-width: 200px;">${name}</strong>
+                    </div>
+                    <span class="badge bg-info-subtle text-info border border-info">${badge}</span>
+                </div>
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center text-muted small mb-2">
+                            <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                            <span>${locality} • Coord: ${Number(targetLat).toFixed(4)}, ${Number(targetLon).toFixed(4)}</span>
+                        </div>
+
+                        <div class="row g-2 text-center my-2 p-2 rounded" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);">
+                            <div class="col-4">
+                                <div class="text-muted" style="font-size: 0.7rem;">Starting Revenue</div>
+                                <strong class="text-success" style="font-size: 0.95rem;">${rev}</strong>
+                                <div class="text-muted" style="font-size: 0.65rem;">/month</div>
+                            </div>
+                            <div class="col-4 border-start border-end border-secondary">
+                                <div class="text-muted" style="font-size: 0.7rem;">Est. Costs</div>
+                                <span class="text-warning" style="font-size: 0.9rem;">${costs}</span>
+                                <div class="text-muted" style="font-size: 0.65rem;">OPEX</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted" style="font-size: 0.7rem;">Net Profit</div>
+                                <strong class="text-info" style="font-size: 0.95rem;">${profit}</strong>
+                                <div class="text-muted" style="font-size: 0.65rem;">est. margin</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center my-2 px-1">
+                            <span class="small text-muted">Demand: <span class="badge ${demandBadgeClass} ms-1">${demand}</span></span>
+                            <span class="small text-muted">Competition: <span class="badge ${compBadgeClass} ms-1">${competition}</span></span>
+                        </div>
+
+                        <ul class="list-unstyled my-2 ps-1">
+                            ${reasonsList}
+                        </ul>
+                    </div>
+
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top border-secondary text-muted" style="font-size: 0.72rem;">
+                            <span><i class="fas fa-database me-1"></i>${rec.data_source || 'OSM Gravity Model'}</span>
+                            <span class="badge bg-secondary-subtle text-light">${rec.confidence || 'Signal-based'}</span>
+                        </div>
+
+                        <button type="button" class="btn btn-outline-primary btn-sm w-100 mt-2 d-flex align-items-center justify-content-center gap-2" onclick="navigateToMapOpportunity(${targetLat}, ${targetLon}, '${escapedName}', '${category}', ${rec.starting_monthly_revenue || 0})">
+                            <i class="fas fa-map-marked-alt text-warning"></i>
+                            <span>View on Live Map (5 km)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function navigateToMapOpportunity(lat, lon, name, category, revenue) {
+    if (typeof saveSelectedLocation === 'function') {
+        saveSelectedLocation(lat, lon, name, category);
+    }
+    window.location.href = `/dashboard/?auto_map=true&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&rev=${revenue || 0}`;
+}
+window.navigateToMapOpportunity = navigateToMapOpportunity;
+window.createOpportunityCard = createOpportunityCard;
+
+/**
+ * Render dynamic "Top Business Recommendations" cards based on opportunities or popular places.
+ */
 function renderBusinessRecommendationCards(places, lat, lon) {
-    if (!isBusinessRecommendationsMode()) return;
+    const row = document.getElementById('business-recommendations-row');
+    const dashContainer = document.getElementById('dashboard-recommendations-cards-container');
     const section = document.getElementById('business-recommendations-section') || document.getElementById('business-intelligence-panel');
-    if (!section) return;
 
     if (!places || !places.length) {
-        if (section.tagName === 'SECTION') section.style.display = 'none';
-        else section.classList.add('d-none');
+        if (row) row.innerHTML = '<div class="text-center text-muted p-4 col-12">No recommendations available for this location.</div>';
+        if (dashContainer) dashContainer.innerHTML = '<div class="text-center text-muted p-4 col-12">No recommendations available for this location.</div>';
         return;
     }
 
-    if (section.tagName === 'SECTION') section.style.display = 'block';
-    else {
-        section.classList.remove('d-none');
-        const analyticsSection = document.getElementById('dashboard-analytics-section');
-        if (analyticsSection) analyticsSection.classList.remove('d-none');
+    if (section) section.classList.remove('d-none');
+    const analyticsSection = document.getElementById('dashboard-analytics-section');
+    if (analyticsSection) analyticsSection.classList.remove('d-none');
+
+    const isOpportunityList = places[0] && (places[0].starting_monthly_revenue !== undefined || places[0].target_lat !== undefined);
+
+    let html = '';
+    if (isOpportunityList) {
+        places.slice(0, 5).forEach((rec, idx) => {
+            html += createOpportunityCard(rec, lat, lon);
+        });
+    } else {
+        places.slice(0, 10).forEach((place, index) => {
+            const col = document.createElement('div');
+            col.className = 'col-12 col-md-6 col-lg-4 mb-3';
+            col.innerHTML = createBusinessCard(place, 'recommended', index, lat, lon);
+            html += col.outerHTML;
+        });
     }
 
-    // Ensure parent panels are also visible if nested
-    const parentPanel = section.closest('.dashboard-analytics-panel');
-    if (parentPanel) parentPanel.classList.remove('d-none');
+    if (row) row.innerHTML = html;
+    if (dashContainer) dashContainer.innerHTML = html;
 
-    const row = document.getElementById('business-recommendations-row');
-    if (!row) return;
-
-    row.innerHTML = '';
-
-    // Show top 10 places as primary recommendations
-    const top10 = places.slice(0, 10);
-
-    top10.forEach((place, index) => {
-        const col = document.createElement('div');
-        // Use col-12 for dashboard panel cards to ensure they stack nicely
-        col.className = section.tagName === 'SECTION' ? 'col-md-6 col-lg-4 mb-4' : 'col-12 mb-3';
-        col.innerHTML = createBusinessCard(place, 'recommended', index, lat, lon);
-        row.appendChild(col);
-    });
     if (window.Favorites) Favorites.refresh();
 }
 
@@ -3357,7 +3575,22 @@ async function selectSearchResult(lat, lon, name = 'Selected Location', business
             shadowSize: [41, 41]
         })
     }).addTo(map)
-        .bindPopup(`<b>Tracking: ${name}</b><br>Coordinates: ${flat.toFixed(4)}, ${flon.toFixed(4)}`).openPopup();
+        .bindPopup(`<b>Tracking: ${name}</b><br>Coordinates: ${flat.toFixed(4)}, ${flon.toFixed(4)}<br><small class="text-primary"><i class="fas fa-radar"></i> 5 km Radius Active</small>`).openPopup();
+
+    // Draw 5 km analysis circle
+    if (analysisRadiusCircle) {
+        try { map.removeLayer(analysisRadiusCircle); } catch (_e) {}
+    }
+    analysisRadiusCircle = L.circle([flat, flon], {
+        radius: 5000,
+        color: '#2563eb',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.12,
+        weight: 2,
+        dashArray: '6, 6'
+    }).addTo(map).bindTooltip('5 km Analysis Zone', { permanent: false, direction: 'top' });
+
+    map.setView([flat, flon], 14);
 
     // CALCULATE ROUTE (Dijkstra-based via Routing Machine)
     calculateRoute(startLatLng.lat, startLatLng.lng, flat, flon, name);
@@ -3365,7 +3598,7 @@ async function selectSearchResult(lat, lon, name = 'Selected Location', business
     // Update accuracy
     updateAccuracyMeter(90);
     saveSelectedLocation(flat, flon, name || 'Selected Location', businessType || '');
-    if (redirectToDashboardAIIfNeeded()) return;
+    await findPopularPlaces(flat, flon, false);
     await analyzeLocationIntelligence(flat, flon, name || 'Selected Location');
 }
 
@@ -3852,31 +4085,59 @@ async function updateBuildingOutlines(lat, lon) {
 }
 
 // Update crowd intensity dropdown based on location
-async function updateCrowdIntensityDropdown(lat, lon) {
-    const dropdown = document.getElementById('id_crowd_intensity');
+async function updateCrowdIntensityDropdown(lat, lon, preloadedData = null) {
+    const dropdown = document.getElementById('id_crowd_intensity') || document.getElementById('dashboard-id_crowd_intensity');
 
-    // Show loading state
-    dropdown.innerHTML = '<option value="">Analyzing crowd intensity...</option>';
-    dropdown.disabled = true;
+    if (dropdown) {
+        dropdown.innerHTML = '<option value="">Analyzing crowd intensity...</option>';
+        dropdown.disabled = true;
+    }
+
+    // Helper: Haversine distance in meters (available throughout the function)
+    const _dist = (la1, lo1, la2, lo2) => {
+        const R = 6371000;
+        const dLat = (la2 - la1) * Math.PI / 180;
+        const dLon = (lo2 - lo1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
 
     try {
-        const response = await fetch('/analyze-crowd-intensity/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ latitude: lat, longitude: lon })
-        });
+        let data = preloadedData;
+        if (!data) {
+            const response = await fetch('/analyze-crowd-intensity/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ latitude: lat, longitude: lon })
+            });
 
-        const data = await response.json();
+            data = await response.json();
+        }
 
-        if (data.success) {
+        if (data && (data.success || data.high_intensity || data.medium_intensity || data.low_intensity)) {
+            const activeMap = (typeof dashboardMap !== 'undefined' && dashboardMap) ? dashboardMap : (typeof map !== 'undefined' ? map : null);
+
             // Clear previous crowd intensity markers and heatmap layers
-            crowdIntensityAreas.forEach(marker => map.removeLayer(marker));
-            crowdIntensityAreas = [];
-            heatmapLayers.forEach(layer => map.removeLayer(layer));
-            heatmapLayers = [];
+            if (activeMap) {
+                crowdIntensityAreas.forEach(marker => {
+                    try { activeMap.removeLayer(marker); } catch (_e) {}
+                });
+                crowdIntensityAreas = [];
+                heatmapLayers.forEach(layer => {
+                    try { activeMap.removeLayer(layer); } catch (_e) {}
+                });
+                heatmapLayers = [];
+
+                if (!popularPlacesPanelRequested && Array.isArray(popularPlacesMarkers) && popularPlacesMarkers.length > 0) {
+                    popularPlacesMarkers.forEach(marker => {
+                        try { activeMap.removeLayer(marker); } catch (e) {}
+                    });
+                    popularPlacesMarkers = [];
+                }
+            }
 
             // Define prediction variable from response data
             const pred = data.business_prediction;
@@ -3908,7 +4169,6 @@ async function updateCrowdIntensityDropdown(lat, lon) {
 
             // Ensure 2-5 recommendations
             if (recommendations.length < 2) {
-                // If we don't have enough, add some generic fallbacks based on intense logic or just generic popular ones
                 const fallbacks = ['Cafe', 'Retail Store', 'Co-working Space', 'Fast Food', 'Gym'];
                 for (let f of fallbacks) {
                     if (recommendations.length >= 2) break;
@@ -3952,17 +4212,15 @@ async function updateCrowdIntensityDropdown(lat, lon) {
                 suggestionCard.classList.remove('d-none');
             }
 
-            // Also update the legacy left-panel box if it exists (but keep it synced or just rely on tab)
             let box = document.getElementById('mlPrediction');
-            if (box) box.style.display = 'none'; // Hide legacy box in favor of Tab
+            if (box) box.style.display = 'none';
 
             // Auto-switch to AI Tab to show results
             const aiTabBtn = document.getElementById('ai-strategy-tab') || document.getElementById('dash-ai-tab');
-            if (allowBusinessIntelUI && aiTabBtn) {
+            if (allowBusinessIntelUI && aiTabBtn && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
                 const tab = new bootstrap.Tab(aiTabBtn);
                 tab.show();
 
-                // If we're on dashboard, ensure the panel is visible
                 const intelPanel = document.getElementById('business-intelligence-panel');
                 if (intelPanel) intelPanel.classList.remove('d-none');
             }
@@ -3972,18 +4230,18 @@ async function updateCrowdIntensityDropdown(lat, lon) {
                 businessByIntensity = data.business_by_intensity || {};
             }
 
-            // Re-render popular places table so "AI business (from dataset)" column gets filled
+            // Re-render popular places table
             if (allowBusinessIntelUI && lastPopularPlacesResult.places.length && lastPopularPlacesResult.lat === lat && lastPopularPlacesResult.lon === lon) {
                 renderPopularPlacesTable(lastPopularPlacesResult.places, lat, lon);
                 renderBusinessRecommendationCards(lastPopularPlacesResult.places, lat, lon);
             }
 
             // Update dropdown with available options
-            dropdown.innerHTML = '<option value="">Select crowd intensity</option>';
+            if (dropdown) {
+                dropdown.innerHTML = '<option value="">Select crowd intensity</option>';
+            }
 
-            // Cache raw intensity data so the chatbot can later highlight
-            // zones for a user-chosen crowd level.
-            // Which location the heatmap on screen belongs to (used by the PDF report capture).
+            // Cache raw intensity data for report/chatbot
             window.lastHeatmapAnalysis = {
                 lat: Number(lat),
                 lon: Number(lon),
@@ -4001,138 +4259,185 @@ async function updateCrowdIntensityDropdown(lat, lon) {
                 low: data.low_intensity || [],
             };
 
+            // High Intensity Overlays (Red Circles)
             if (data.high_intensity && data.high_intensity.length > 0) {
-                const option = document.createElement('option');
-                option.value = 'high';
-                option.textContent = `High - High intensity crowded area (${data.high_intensity.length} areas found)`;
-                dropdown.appendChild(option);
+                if (dropdown) {
+                    const option = document.createElement('option');
+                    option.value = 'high';
+                    option.textContent = `High - High intensity crowded area (${data.high_intensity.length} areas found)`;
+                    dropdown.appendChild(option);
+                }
 
-                // Helper: Haversine distance in meters (hoisted for all intensity loops)
-                const _dist = (la1, lo1, la2, lo2) => {
-                    const R = 6371000, dLat = (la2 - la1) * Math.PI / 180, dLon = (lo2 - lo1) * Math.PI / 180;
-                    const a = Math.sin(dLat / 2) ** 2 + Math.cos(la1 * Math.PI / 180) * Math.cos(la2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-                    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                };
-                // Add heatmap overlays for high intensity areas (larger circles with gradient)
-                // Only draw circles within the 2km radius
-                data.high_intensity.forEach(area => {
-                    if (_dist(lat, lon, area.latitude, area.longitude) > 2000) return;
-                    const heatmapCircle = L.circle([area.latitude, area.longitude], {
-                        radius: 420,
-                        color: '#1a3a6e',
-                        fillColor: '#ff0000',
-                        fillOpacity: 0.25,
-                        weight: 2
-                    }).addTo(map).bindPopup(`<b>High Intensity Area</b><br>${area.count} Points of Interest`);
-                    heatmapLayers.push(heatmapCircle);
+                if (activeMap) {
+                    data.high_intensity.forEach(area => {
+                        if (_dist(lat, lon, area.latitude, area.longitude) > 5000) return;
+                        const heatmapCircle = L.circle([area.latitude, area.longitude], {
+                            radius: 750,
+                            color: '#1e3a8a',
+                            fillColor: '#ef4444',
+                            fillOpacity: 0.32,
+                            weight: 2
+                        }).addTo(activeMap).bindPopup(`
+                            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 170px;">
+                                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                                    <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#ef4444;"></span>
+                                    <strong style="color:#ef4444; font-size:0.9rem;">High Footfall Sector</strong>
+                                </div>
+                                <div style="font-size:0.8rem; color:#475569; margin-bottom:4px;">
+                                    <strong>${area.count}</strong> Monitored POIs within 5 km
+                                </div>
+                                <div style="font-size:0.75rem; color:#64748b; background:#fef2f2; padding:3px 6px; border-radius:4px;">
+                                    Prime pedestrian footfall & peak commercial traffic
+                                </div>
+                            </div>
+                        `);
+                        heatmapLayers.push(heatmapCircle);
 
-                    const marker = L.circleMarker([area.latitude, area.longitude], {
-                        radius: 8,
-                        color: '#1a3a6e',
-                        fillColor: '#ff0000',
-                        fillOpacity: 0.9,
-                        weight: 3
-                    }).addTo(map).bindPopup(`<b>High Intensity Area</b><br>${area.count} Points of Interest`);
-                    crowdIntensityAreas.push(marker);
-                });
+                        const marker = L.circleMarker([area.latitude, area.longitude], {
+                            radius: 7.5,
+                            color: '#1e3a8a',
+                            fillColor: '#ef4444',
+                            fillOpacity: 1.0,
+                            weight: 2.5
+                        }).addTo(activeMap).bindPopup(`<b>High Intensity Sector</b><br>${area.count} Monitored POIs`);
+                        crowdIntensityAreas.push(marker);
+                    });
+                }
             }
 
-            // --- REVENUE PREDICTION DISPLAY ---
+            // Update revenue prediction & active sensors in footer
             const revenueDisplay = document.getElementById('revenue-prediction-display');
             const scoreVal = document.getElementById('crowd-score-value');
             const revenueVal = document.getElementById('revenue-value');
 
-            if (revenueDisplay && data.crowd_score !== undefined) {
-                // Show the panel
+            if (revenueDisplay) {
                 revenueDisplay.classList.remove('d-none');
-
-                // Animate values if possible, or just set them
-                scoreVal.textContent = data.crowd_score;
-
-                // Format revenue as currency (INR)
-                const revenue = data.estimated_revenue || 0;
-                revenueVal.textContent = new Intl.NumberFormat('en-IN', {
-                    style: 'currency',
-                    currency: 'INR',
-                    maximumFractionDigits: 0
-                }).format(revenue);
-
-                // Optional: Color coding based on score
-                if (data.crowd_score >= 70) scoreVal.style.color = '#4ade80'; // Green
-                else if (data.crowd_score >= 30) scoreVal.style.color = '#facc15'; // Yellow
-                else scoreVal.style.color = '#f87171'; // Red
+                if (scoreVal) {
+                    const sensorCount = data.active_sensors_count || data.total_pois || data.crowd_score || 0;
+                    scoreVal.textContent = String(sensorCount);
+                    const scoreLabel = scoreVal.parentElement?.querySelector('.revenue-label');
+                    if (scoreLabel) scoreLabel.textContent = 'Active Sensors';
+                    if (sensorCount >= 20) scoreVal.style.color = '#4ade80';
+                    else if (sensorCount >= 8) scoreVal.style.color = '#facc15';
+                    else scoreVal.style.color = '#f87171';
+                }
+                if (revenueVal && (data.estimated_revenue !== undefined || data.total_area_revenue !== undefined)) {
+                    const revenue = data.estimated_revenue || data.total_area_revenue || 0;
+                    revenueVal.textContent = new Intl.NumberFormat('en-IN', {
+                        style: 'currency',
+                        currency: 'INR',
+                        maximumFractionDigits: 0
+                    }).format(revenue);
+                }
             }
 
-
+            // Medium Intensity Overlays
             if (data.medium_intensity && data.medium_intensity.length > 0) {
-                const option = document.createElement('option');
-                option.value = 'medium';
-                option.textContent = `Moderate (medium crowd) - ${data.medium_intensity.length} areas found`;
-                dropdown.appendChild(option);
+                if (dropdown) {
+                    const option = document.createElement('option');
+                    option.value = 'medium';
+                    option.textContent = `Moderate (medium crowd) - ${data.medium_intensity.length} areas found`;
+                    dropdown.appendChild(option);
+                }
 
-                // Add heatmap overlays for medium intensity areas
-                data.medium_intensity.forEach(area => {
-                    if (_dist(lat, lon, area.latitude, area.longitude) > 2000) return;
-                    const heatmapCircle = L.circle([area.latitude, area.longitude], {
-                        radius: 300,
-                        color: '#1a6ea8',
-                        fillColor: '#ffaa00',
-                        fillOpacity: 0.22,
-                        weight: 2
-                    }).addTo(map).bindPopup(`<b>Medium Intensity Area</b><br>${area.count} Points of Interest`);
-                    heatmapLayers.push(heatmapCircle);
+                if (activeMap) {
+                    data.medium_intensity.forEach(area => {
+                        if (_dist(lat, lon, area.latitude, area.longitude) > 5000) return;
+                        const heatmapCircle = L.circle([area.latitude, area.longitude], {
+                            radius: 650,
+                            color: '#1e3a8a',
+                            fillColor: '#ef4444',
+                            fillOpacity: 0.28,
+                            weight: 2
+                        }).addTo(activeMap).bindPopup(`
+                            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 170px;">
+                                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                                    <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#ef4444;"></span>
+                                    <strong style="color:#ef4444; font-size:0.9rem;">Medium Footfall Sector</strong>
+                                </div>
+                                <div style="font-size:0.8rem; color:#475569; margin-bottom:4px;">
+                                    <strong>${area.count}</strong> Monitored POIs within 5 km
+                                </div>
+                                <div style="font-size:0.75rem; color:#64748b; background:#fffbeb; padding:3px 6px; border-radius:4px;">
+                                    Steady consumer footfall with balanced market density
+                                </div>
+                            </div>
+                        `);
+                        heatmapLayers.push(heatmapCircle);
 
-                    const marker = L.circleMarker([area.latitude, area.longitude], {
-                        radius: 7,
-                        color: '#1a6ea8',
-                        fillColor: '#ffaa00',
-                        fillOpacity: 0.9,
-                        weight: 2
-                    }).addTo(map).bindPopup(`<b>Medium Intensity Area</b><br>${area.count} Points of Interest`);
-                    crowdIntensityAreas.push(marker);
-                });
+                        const marker = L.circleMarker([area.latitude, area.longitude], {
+                            radius: 7.0,
+                            color: '#1e3a8a',
+                            fillColor: '#ef4444',
+                            fillOpacity: 1.0,
+                            weight: 2.5
+                        }).addTo(activeMap).bindPopup(`<b>Medium Intensity Sector</b><br>${area.count} Monitored POIs`);
+                        crowdIntensityAreas.push(marker);
+                    });
+                }
             }
 
+            // Low Intensity Overlays
             if (data.low_intensity && data.low_intensity.length > 0) {
-                const option = document.createElement('option');
-                option.value = 'low';
-                option.textContent = `Low (low crowd) - ${data.low_intensity.length} areas found`;
-                dropdown.appendChild(option);
+                if (dropdown) {
+                    const option = document.createElement('option');
+                    option.value = 'low';
+                    option.textContent = `Low (low crowd) - ${data.low_intensity.length} areas found`;
+                    dropdown.appendChild(option);
+                }
 
-                // Add heatmap overlays for low intensity areas
-                data.low_intensity.forEach(area => {
-                    if (_dist(lat, lon, area.latitude, area.longitude) > 2000) return;
-                    const heatmapCircle = L.circle([area.latitude, area.longitude], {
-                        radius: 200,
-                        color: '#1a7a8a',
-                        fillColor: '#00cc00',
-                        fillOpacity: 0.18,
-                        weight: 2
-                    }).addTo(map).bindPopup(`<b>Low Intensity Area</b><br>${area.count} Points of Interest`);
-                    heatmapLayers.push(heatmapCircle);
+                if (activeMap) {
+                    data.low_intensity.forEach(area => {
+                        if (_dist(lat, lon, area.latitude, area.longitude) > 5000) return;
+                        const heatmapCircle = L.circle([area.latitude, area.longitude], {
+                            radius: 500,
+                            color: '#1e3a8a',
+                            fillColor: '#ef4444',
+                            fillOpacity: 0.22,
+                            weight: 1.5
+                        }).addTo(activeMap).bindPopup(`
+                            <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 170px;">
+                                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                                    <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#ef4444;"></span>
+                                    <strong style="color:#ef4444; font-size:0.9rem;">Low Footfall Sector</strong>
+                                </div>
+                                <div style="font-size:0.8rem; color:#475569; margin-bottom:4px;">
+                                    <strong>${area.count}</strong> Monitored POIs within 5 km
+                                </div>
+                                <div style="font-size:0.75rem; color:#64748b; background:#ecfdf5; padding:3px 6px; border-radius:4px;">
+                                    Emerging or quiet zone with lower pedestrian competition
+                                </div>
+                            </div>
+                        `);
+                        heatmapLayers.push(heatmapCircle);
 
-                    const marker = L.circleMarker([area.latitude, area.longitude], {
-                        radius: 6,
-                        color: '#1a7a8a',
-                        fillColor: '#00cc00',
-                        fillOpacity: 0.9,
-                        weight: 2
-                    }).addTo(map).bindPopup(`<b>Low Intensity Area</b><br>${area.count} Points of Interest`);
-                    crowdIntensityAreas.push(marker);
-                });
+                        const marker = L.circleMarker([area.latitude, area.longitude], {
+                            radius: 6.0,
+                            color: '#1e3a8a',
+                            fillColor: '#ef4444',
+                            fillOpacity: 1.0,
+                            weight: 2
+                        }).addTo(activeMap).bindPopup(`<b>Low Intensity Sector</b><br>${area.count} Monitored POIs`);
+                        crowdIntensityAreas.push(marker);
+                    });
+                }
             }
 
             // If no areas found, add default options with explicit Moderate = medium, Low = low
             if (data.high_intensity.length === 0 && data.medium_intensity.length === 0 && data.low_intensity.length === 0) {
-                dropdown.innerHTML = `
-                    <option value="">Select crowd intensity</option>
-                    <option value="high">High - High intensity crowded area</option>
-                    <option value="medium">Moderate (medium crowd)</option>
-                    <option value="low">Low (low crowd)</option>
-                `;
+                if (dropdown) {
+                    dropdown.innerHTML = `
+                        <option value="">Select crowd intensity</option>
+                        <option value="high">High - High intensity crowded area</option>
+                        <option value="medium">Moderate (medium crowd)</option>
+                        <option value="low">Low (low crowd)</option>
+                    `;
+                }
             }
 
-            dropdown.disabled = false;
+            if (dropdown) {
+                dropdown.disabled = false;
+            }
 
             // Draw building outlines around the analyzed location when in dark mode
             await updateBuildingOutlines(lat, lon);
@@ -4142,7 +4447,25 @@ async function updateCrowdIntensityDropdown(lat, lon) {
             const mlBox = document.getElementById('mlPrediction');
             if (mlBox) mlBox.style.display = 'none';
             updateBusinessTypeOptionsFromPrediction(null);
-            // Fallback to default options on error (Moderate = medium crowd, Low = low crowd)
+            if (dropdown) {
+                dropdown.innerHTML = `
+                    <option value="">Select crowd intensity</option>
+                    <option value="high">High - High intensity crowded area</option>
+                    <option value="medium">Moderate (medium crowd)</option>
+                    <option value="low">Low (low crowd)</option>
+                `;
+                dropdown.disabled = false;
+            }
+            console.error('Error analyzing crowd intensity:', data?.error);
+        }
+    } catch (error) {
+        console.error('Error updating crowd intensity:', error);
+        lastCrowdIntensityData = { high: [], medium: [], low: [] };
+        document.getElementById('business-suggestion-card')?.style.setProperty('display', 'none');
+        const mlBox = document.getElementById('mlPrediction');
+        if (mlBox) mlBox.style.display = 'none';
+        updateBusinessTypeOptionsFromPrediction(null);
+        if (dropdown) {
             dropdown.innerHTML = `
                 <option value="">Select crowd intensity</option>
                 <option value="high">High - High intensity crowded area</option>
@@ -4150,22 +4473,7 @@ async function updateCrowdIntensityDropdown(lat, lon) {
                 <option value="low">Low (low crowd)</option>
             `;
             dropdown.disabled = false;
-            console.error('Error analyzing crowd intensity:', data.error);
         }
-    } catch (error) {
-        console.error('Error:', error);
-        lastCrowdIntensityData = { high: [], medium: [], low: [] };
-        document.getElementById('business-suggestion-card')?.style.setProperty('display', 'none');
-        const mlBox = document.getElementById('mlPrediction');
-        if (mlBox) mlBox.style.display = 'none';
-        updateBusinessTypeOptionsFromPrediction(null);
-        dropdown.innerHTML = `
-            <option value="">Select crowd intensity</option>
-            <option value="high">High - High intensity crowded area</option>
-            <option value="medium">Moderate (medium crowd)</option>
-            <option value="low">Low (low crowd)</option>
-        `;
-        dropdown.disabled = false;
     }
 }
 
@@ -4742,7 +5050,11 @@ function initDashboardInteractions() {
 
     // Dashboard "My Location" trigger
     safeOn('dashboard-find-location-btn', 'click', async () => {
-        await findMyLocation('dashboard-find-location-btn');
+        const geoRes = await findMyLocation('dashboard-find-location-btn');
+        if (geoRes && geoRes.success && typeof geoRes.lat === 'number') {
+            await findPopularPlaces(geoRes.lat, geoRes.lon, false);
+            await updateCrowdIntensityDropdown(geoRes.lat, geoRes.lon);
+        }
     });
 
     // Dashboard "Popular Places" trigger
@@ -4794,6 +5106,70 @@ function initDashboardInteractions() {
     });
 }
 
+async function focusMapOnOpportunityOrLocation(targetLat, targetLon, targetName, targetRev) {
+    const lat = parseFloat(targetLat);
+    const lon = parseFloat(targetLon);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+    const activeMap = dashboardMap || map;
+    if (!activeMap) return;
+
+    activeMap.setView([lat, lon], 14);
+
+    if (userMarker) {
+        try { activeMap.removeLayer(userMarker); } catch (_e) {}
+    }
+    if (analysisRadiusCircle) {
+        try { activeMap.removeLayer(analysisRadiusCircle); } catch (_e) {}
+    }
+
+    analysisRadiusCircle = L.circle([lat, lon], {
+        radius: 5000,
+        color: '#2563eb',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.12,
+        weight: 2,
+        dashArray: '6, 6'
+    }).addTo(activeMap).bindTooltip('5 km Radius Zone', { permanent: false, direction: 'top' });
+
+    const revFormatted = targetRev && Number(targetRev) > 0
+        ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(targetRev)) + ' /mo'
+        : '';
+
+    const popupHtml = `
+        <div style="min-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="font-weight: 700; font-size: 1rem; color: #1e293b; margin-bottom: 4px;">
+                <i class="fas fa-bullseye text-primary me-1"></i>${targetName || 'Opportunity Location'}
+            </div>
+            ${revFormatted ? `<div style="font-size: 0.85rem; color: #16a34a; font-weight: 600; margin-bottom: 4px;"><i class="fas fa-chart-line me-1"></i>Starting Rev: ${revFormatted}</div>` : ''}
+            <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 6px;">
+                Lat/Lon: ${lat.toFixed(4)}, ${lon.toFixed(4)} • 5 km Analysis Zone Active
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: #334155;">
+                <i class="fas fa-check-circle text-success me-1"></i>Real crowd signals & recommendations synchronized
+            </div>
+        </div>
+    `;
+
+    userMarker = L.marker([lat, lon], {
+        icon: L.icon({
+            iconUrl: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-orange.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        })
+    }).addTo(activeMap).bindPopup(popupHtml).openPopup();
+
+    const searchInput = document.getElementById('dashboard-location-search');
+    if (searchInput && targetName) searchInput.value = targetName;
+
+    // Trigger crowd analysis and popular places for 5000m radius
+    await findPopularPlaces(lat, lon, false);
+}
+window.focusMapOnOpportunityOrLocation = focusMapOnOpportunityOrLocation;
+
 function initDynamicDashboardMap() {
     const mapEl = document.getElementById('dashboard-map');
     if (!mapEl || dashboardMap) {
@@ -4803,10 +5179,15 @@ function initDynamicDashboardMap() {
         return;
     }
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const stored = getSelectedLocation();
+    const initialLat = parseFloat(urlParams.get('lat')) || (stored ? parseFloat(stored.lat) : 12.9716);
+    const initialLon = parseFloat(urlParams.get('lon')) || (stored ? parseFloat(stored.lng) : 77.5946);
+
     // Initialize Leaflet on the dashboard-specific viewport
-    dashboardMap = L.map('dashboard-map').setView([51.505, -0.09], 13);
+    dashboardMap = L.map('dashboard-map').setView([initialLat, initialLon], 13);
     L.tileLayer('https://api.maptiler.com/maps/basic-v2/{z}/{x}/{y}.png?key=SJwCksU5oVIkLOgs9ElB', {
-        attribution: '\u003ca href="https://www.maptiler.com/copyright/" target="_blank"\u003e\u0026copy; MapTiler\u003c/a\u003e \u003ca href="https://www.openstreetmap.org/copyright" target="_blank"\u003e\u0026copy; OpenStreetMap contributors\u003c/a\u003e',
+        attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
         maxZoom: 19,
         crossOrigin: true  // MapTiler sends CORS headers; lets the PDF report capture the map
     }).addTo(dashboardMap);
@@ -4974,15 +5355,26 @@ document.addEventListener('DOMContentLoaded', () => {
         setActiveSidebarLink('sidebar-dashboard-link');
     }
 
+    const optLat = urlParams.get('lat') || (stored ? stored.lat : null);
+    const optLon = urlParams.get('lon') || (stored ? stored.lng : null);
+    const optName = urlParams.get('name') || (stored ? stored.name : 'Selected Location');
+    const optRev = urlParams.get('rev') || null;
+
     if (triggerMap && document.getElementById('btn-show-map')) {
         setTimeout(() => {
             setActiveSidebarLink('sidebar-heatmap-link');
-            if (window.requireSupabaseAuth) {
-                window.requireSupabaseAuth('Live Crowd Heatmap', () => {
-                    document.getElementById('btn-show-map').click();
-                });
-            } else {
+            const openAndFocus = () => {
                 document.getElementById('btn-show-map').click();
+                if (optLat && optLon) {
+                    setTimeout(async () => {
+                        await focusMapOnOpportunityOrLocation(optLat, optLon, optName, optRev);
+                    }, 400);
+                }
+            };
+            if (window.requireSupabaseAuth) {
+                window.requireSupabaseAuth('Live Crowd Heatmap', openAndFocus);
+            } else {
+                openAndFocus();
             }
         }, 200);
     } else if (triggerAi && document.getElementById('btn-show-ai-recommender')) {

@@ -26,6 +26,8 @@ from .analysis import (  # noqa: F401  (re-exported for existing importers)
     build_business_prediction,
     build_feasibility_query,
     evaluate_feasibility,
+    generate_location_business_recommendations,
+    generate_fallback_spatial_pois,
 )
 
 
@@ -263,10 +265,65 @@ def autocomplete_location(request):
 
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
+def _haversine_distance_m(lat1, lon1, lat2, lon2):
+    r = 6371000.0  # Earth's radius in meters
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return r * c
+
+
+@csrf_exempt
+@require_http_methods(['GET', 'POST'])
+def get_location_recommendations(request):
+    """
+    Return top 5 ranked location-specific business recommendations
+    based on the 5km trading zone around lat, lon.
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    else:
+        data = request.GET
+
+    lat = data.get('latitude') or data.get('lat')
+    lon = data.get('longitude') or data.get('lon') or data.get('lng')
+    location_name = data.get('location_name') or data.get('name') or 'Selected Location'
+    radius = int(data.get('radius') or 5000)
+
+    if lat is None or lon is None:
+        return JsonResponse({'success': False, 'error': 'Latitude and longitude are required'}, status=400)
+
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid coordinates'}, status=400)
+
+    recs = generate_location_business_recommendations(lat, lon, radius_m=radius, location_name=location_name)
+    return JsonResponse({
+        'success': True,
+        'analysis_radius': radius,
+        'location': {
+            'name': location_name,
+            'latitude': lat,
+            'longitude': lon,
+            'radius': radius
+        },
+        'recommendations': recs,
+        'count': len(recs)
+    })
+
+
 @csrf_exempt
 @require_http_methods(['POST'])
 def find_popular_places(request):
-    """Find popular places within 5km radius using Overpass API."""
+    """Find popular places within an exact 5km radius using optimized Overpass spatial query."""
     try:
         data = json.loads(request.body or '{}')
     except json.JSONDecodeError:
@@ -274,6 +331,7 @@ def find_popular_places(request):
 
     lat = data.get('latitude')
     lon = data.get('longitude')
+    loc_name = data.get('name') or data.get('location_name') or 'Selected Location'
     if lat is None or lon is None:
         return JsonResponse({
             'success': False,
@@ -287,30 +345,92 @@ def find_popular_places(request):
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
         return JsonResponse({'success': False, 'error': 'Coordinates out of range'}, status=400)
 
-    # Overpass query: optimized for 20 spatial tags within 2km
-    query = _build_overpass_query(lat, lon, 2000)
-    results, error = _run_overpass_query(query, timeout=30)
+    # 5 km radius analysis query
+    analysis_radius = 5000
+    query = _build_overpass_query(lat, lon, analysis_radius)
+    results, error = _run_overpass_query(query, timeout=5, lat=lat, lon=lon, radius=analysis_radius)
     if error or results is None:
         return JsonResponse({
             'success': False,
             'error': error or 'Unable to fetch popular places. Please try again.'
         })
-    elements = results.get('elements', [])
+    raw_elements = results.get('elements', [])
     
+    # Strict 5 km Haversine boundary filter (points <= 5000m included, > 5000m excluded)
+    elements = []
+    for el in raw_elements:
+        e_lat = el.get('lat') or (el.get('center') or {}).get('lat')
+        e_lon = el.get('lon') or (el.get('center') or {}).get('lon')
+        if e_lat is not None and e_lon is not None:
+            dist = _haversine_distance_m(lat, lon, float(e_lat), float(e_lon))
+            if dist <= float(analysis_radius):
+                el_copy = dict(el)
+                el_copy['distance_m'] = round(dist, 1)
+                elements.append(el_copy)
+        else:
+            elements.append(el)
+
     # --- PER-PLACE REVENUE CALCULATION ---
     enriched_places, total_area_revenue = utils.enrich_places_with_revenue(elements)
     
+    # --- UNIFIED CROWD INTENSITY CALCULATION (Avoids 2nd redundant network call) ---
+    grid = classify_sectors(elements, lat, lon, radius_m=analysis_radius)
+    crowd_score = utils.calculate_crowd_score(elements)
+    est_revenue = utils.predict_revenue(crowd_score)
+    
+    business_prediction = None
+    try:
+        business_prediction = build_business_prediction(grid['dominant'], elements)
+        business_prediction.pop('area_hint', None)
+    except Exception:
+        pass
+
+    crowd_intensity_data = {
+        'success': True,
+        'high_intensity': grid['high'],
+        'medium_intensity': grid['medium'],
+        'low_intensity': grid['low'],
+        'dominant': grid['dominant'],
+        'total_pois': len(elements),
+        'crowd_score': crowd_score,
+        'estimated_revenue': est_revenue,
+        'business_prediction': business_prediction,
+        'business_by_intensity': get_all_business_choices(),
+        'analysis_radius': analysis_radius,
+    }
+
+    # Generate 5 dynamic location-specific business recommendations
+    recs = generate_location_business_recommendations(lat, lon, radius_m=analysis_radius, location_name=loc_name, elements=elements)
+
+    is_live = results.get('is_live', True)
+    data_source = results.get('data_source', 'Verified live OpenStreetMap' if is_live else 'Estimated crowd density based on available signals')
+
     return JsonResponse({
         'success': True, 
         'results': enriched_places,
-        'total_area_revenue': total_area_revenue
+        'places': enriched_places,
+        'total_area_revenue': total_area_revenue if total_area_revenue > 0 else est_revenue,
+        'estimated_revenue': total_area_revenue if total_area_revenue > 0 else est_revenue,
+        'active_sensors_count': len(elements),
+        'active_sensors': len(elements),
+        'analysis_radius': analysis_radius,
+        'crowd_intensity': crowd_intensity_data,
+        'recommendations': recs,
+        'is_live': is_live,
+        'data_source': data_source,
+        'data_quality': results.get('data_quality', 'Verified live' if is_live else 'Signal-based estimate'),
     })
 
 @csrf_exempt
+@csrf_exempt
 def analyze_crowd_intensity(request):
-    """Analyze crowd intensity in 5km radius and return high/medium/low areas"""
+    """Analyze crowd intensity in exact 5km radius and return high/medium/low areas."""
     if request.method == 'POST':
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
         lat = data.get('latitude')
         lon = data.get('longitude')
         
@@ -318,16 +438,29 @@ def analyze_crowd_intensity(request):
             return JsonResponse({'success': False, 'message': 'Latitude and longitude are required'})
         
         try:
-            # Use Overpass API to find amenities and POIs within 2km radius
-            query = _build_overpass_query(lat, lon, 2000)
-            results, error = _run_overpass_query(query, timeout=30)
+            lat = float(lat)
+            lon = float(lon)
+            analysis_radius = 5000
+            
+            # Use Overpass API to find amenities and POIs within 5km radius
+            query = _build_overpass_query(lat, lon, analysis_radius)
+            results, error = _run_overpass_query(query, timeout=20, lat=lat, lon=lon, radius=analysis_radius)
             if error or results is None:
                 return JsonResponse({'success': False, 'error': error or 'Unable to analyze crowd intensity'})
 
-            elements = results.get('elements', [])
+            raw_elements = results.get('elements', [])
+            elements = []
+            for el in raw_elements:
+                e_lat = el.get('lat') or (el.get('center') or {}).get('lat')
+                e_lon = el.get('lon') or (el.get('center') or {}).get('lon')
+                if e_lat is not None and e_lon is not None:
+                    if _haversine_distance_m(lat, lon, float(e_lat), float(e_lon)) <= float(analysis_radius):
+                        elements.append(el)
+                else:
+                    elements.append(el)
 
-            # 9 sectors (3 rings x 3 wedges); High >= 15 POIs, Medium 5-14, Low < 5
-            grid = classify_sectors(elements, lat, lon)
+            # 9 sectors (3 rings x 3 wedges within 5km)
+            grid = classify_sectors(elements, lat, lon, radius_m=analysis_radius)
             high_intensity_areas = grid['high']
             medium_intensity_areas = grid['medium']
             low_intensity_areas = grid['low']
@@ -340,20 +473,27 @@ def analyze_crowd_intensity(request):
             except Exception:
                 pass  # Heatmap still works; frontend handles null
 
+            crowd_score = utils.calculate_crowd_score(elements)
+            estimated_rev = utils.predict_revenue(crowd_score)
+
+            is_live = results.get('is_live', True)
+            data_source = results.get('data_source', 'Verified live OpenStreetMap' if is_live else 'Estimated crowd density based on available signals')
+
             return JsonResponse({
                 'success': True,
                 'high_intensity': high_intensity_areas,
                 'medium_intensity': medium_intensity_areas,
                 'low_intensity': low_intensity_areas,
                 'total_pois': len(elements),
+                'active_sensors_count': len(elements),
+                'analysis_radius': analysis_radius,
                 'business_prediction': business_prediction,
-                # Full per-intensity business mapping so the frontend
-                # can show dynamic suggestions everywhere.
                 'business_by_intensity': get_all_business_choices(),
-                
-                # REVENUE PREDICTION
-                'crowd_score': utils.calculate_crowd_score(elements),
-                'estimated_revenue': utils.predict_revenue(utils.calculate_crowd_score(elements)),
+                'crowd_score': crowd_score,
+                'estimated_revenue': estimated_rev,
+                'is_live': is_live,
+                'data_source': data_source,
+                'data_quality': results.get('data_quality', 'Verified live' if is_live else 'Signal-based estimate'),
             })
             
         except Exception as e:
